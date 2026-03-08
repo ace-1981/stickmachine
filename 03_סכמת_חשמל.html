@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מכונת מדבקות - שלב 3: סכמת חשמל וחיווט</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:16px}
+h1{text-align:center;color:#00d4ff;margin-bottom:4px;font-size:1.4em}
+.subtitle{text-align:center;color:#888;margin-bottom:20px;font-size:0.85em}
+.tab-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tab-btn{background:#0f3460;color:#ccc;border:none;padding:9px 14px;border-radius:10px;cursor:pointer;font-size:0.85em;font-family:inherit}
+.tab-btn.active{background:#e94560;color:#fff}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.card{background:#16213e;border-radius:14px;padding:16px;border:1px solid #0f3460;margin-bottom:14px}
+.card-title{color:#e94560;font-weight:bold;font-size:1.05em;margin-bottom:10px}
+svg{width:100%;height:auto;display:block}
+table{width:100%;border-collapse:collapse;font-size:0.85em;margin:8px 0}
+th{background:#0f3460;color:#00d4ff;padding:8px;text-align:right;border:1px solid #1a3a6a}
+td{padding:7px 8px;border:1px solid #0f346066;background:#16213e}
+.dim{color:#00d4ff;font-weight:bold}
+.warn{background:#e67e2218;border:1px solid #e67e22;border-radius:10px;padding:12px;margin:12px 0;font-size:0.9em}
+.warn-title{color:#e67e22;font-weight:bold;margin-bottom:4px}
+.info{background:#3498db18;border:1px solid #3498db;border-radius:10px;padding:12px;margin:12px 0;font-size:0.9em}
+.info-title{color:#3498db;font-weight:bold;margin-bottom:4px}
+.danger{background:#e74c3c18;border:1px solid #e74c3c;border-radius:10px;padding:12px;margin:12px 0;font-size:0.9em}
+.danger-title{color:#e74c3c;font-weight:bold;margin-bottom:4px}
+.pin-table td:first-child{font-family:monospace;color:#f1c40f;font-weight:bold}
+@media(max-width:600px){body{padding:8px}h1{font-size:1.15em}.tab-btn{padding:7px 10px;font-size:0.8em}}
+</style>
+</head>
+<body>
+
+<h1>שלב 3: סכמת חשמל וחיווט</h1>
+<p class="subtitle">מכונת הדבקת מדבקות לכרטיסי אשראי</p>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('overview')">סכמה כללית</button>
+  <button class="tab-btn" onclick="showTab('drivers')">דרייברים + מנועים</button>
+  <button class="tab-btn" onclick="showTab('sensors')">חיישנים</button>
+  <button class="tab-btn" onclick="showTab('power')">ספק כוח</button>
+  <button class="tab-btn" onclick="showTab('pins')">טבלת פינים</button>
+  <button class="tab-btn" onclick="showTab('wiring')">חיווט פיזי</button>
+</div>
+
+<!-- ==================== סכמה כללית ==================== -->
+<div id="tab-overview" class="tab-content active">
+<div class="card">
+  <div class="card-title">סכמת מערכת כללית — Block Diagram</div>
+  <svg viewBox="0 0 900 700" xmlns="http://www.w3.org/2000/svg">
+    <rect width="900" height="700" fill="#0d1b2a" rx="12"/>
+    <defs>
+      <marker id="a1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#00d4ff"/></marker>
+      <marker id="a-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#e74c3c"/></marker>
+      <marker id="a-grn" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2ecc71"/></marker>
+      <marker id="a-ylw" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#f1c40f"/></marker>
+    </defs>
+
+    <!-- ===== ספק כוח ===== -->
+    <rect x="30" y="30" width="160" height="100" rx="10" fill="#e74c3c15" stroke="#e74c3c" stroke-width="2.5"/>
+    <text x="110" y="55" text-anchor="middle" fill="#e74c3c" font-size="14" font-weight="bold">ספק כוח</text>
+    <text x="110" y="75" text-anchor="middle" fill="#e74c3c" font-size="12">AC 220V → DC 24V</text>
+    <text x="110" y="95" text-anchor="middle" fill="#e74c3c" font-size="11">10A / 240W</text>
+    <text x="110" y="115" text-anchor="middle" fill="#888" font-size="10">Mean Well LRS-350-24</text>
+
+    <!-- 24V rail -->
+    <line x1="190" y1="60" x2="850" y2="60" stroke="#e74c3c" stroke-width="3"/>
+    <text x="500" y="52" text-anchor="middle" fill="#e74c3c" font-size="12" font-weight="bold">24V Rail</text>
+    <!-- GND rail -->
+    <line x1="190" y1="680" x2="850" y2="680" stroke="#444" stroke-width="3"/>
+    <text x="500" y="675" text-anchor="middle" fill="#666" font-size="12" font-weight="bold">GND Rail</text>
+
+    <!-- ===== ממיר 24V→5V ===== -->
+    <rect x="250" y="30" width="130" height="60" rx="8" fill="#f39c1215" stroke="#f39c12" stroke-width="2"/>
+    <text x="315" y="55" text-anchor="middle" fill="#f39c12" font-size="11" font-weight="bold">DC-DC Buck</text>
+    <text x="315" y="72" text-anchor="middle" fill="#f39c12" font-size="10">24V → 5V / 3A</text>
+    <text x="315" y="85" text-anchor="middle" fill="#888" font-size="9">LM2596</text>
+    <!-- 5V rail -->
+    <line x1="380" y1="55" x2="600" y2="55" stroke="#f39c12" stroke-width="2" stroke-dasharray="6,3"/>
+    <text x="490" y="48" text-anchor="middle" fill="#f39c12" font-size="10">5V Rail</text>
+
+    <!-- ===== Arduino Mega ===== -->
+    <rect x="340" y="250" width="220" height="180" rx="12" fill="#16213e" stroke="#00d4ff" stroke-width="3"/>
+    <rect x="355" y="260" width="190" height="25" rx="6" fill="#0f3460"/>
+    <text x="450" y="278" text-anchor="middle" fill="#00d4ff" font-size="14" font-weight="bold">ARDUINO MEGA 2560</text>
+    <text x="450" y="305" text-anchor="middle" fill="#888" font-size="10">בקר ראשי</text>
+
+    <!-- פינים בצד שמאל -->
+    <text x="360" y="330" fill="#f1c40f" font-size="9" font-family="monospace">D2 ← S1</text>
+    <text x="360" y="345" fill="#f1c40f" font-size="9" font-family="monospace">D3 ← S2</text>
+    <text x="360" y="360" fill="#f1c40f" font-size="9" font-family="monospace">D4 ← S3</text>
+    <text x="360" y="380" fill="#3498db" font-size="9" font-family="monospace">D6  → M1 STEP</text>
+    <text x="360" y="395" fill="#3498db" font-size="9" font-family="monospace">D7  → M1 DIR</text>
+    <text x="360" y="410" fill="#9b59b6" font-size="9" font-family="monospace">D8  → M2 STEP</text>
+    <text x="360" y="425" fill="#9b59b6" font-size="9" font-family="monospace">D9  → M2 DIR</text>
+
+    <!-- פינים בצד ימין -->
+    <text x="475" y="380" fill="#e67e22" font-size="9" font-family="monospace">D10 → M3 STEP</text>
+    <text x="475" y="395" fill="#e67e22" font-size="9" font-family="monospace">D11 → M3 DIR</text>
+    <text x="475" y="415" fill="#27ae60" font-size="9" font-family="monospace">D12 → EN (all)</text>
+
+    <!-- 5V כניסה -->
+    <line x1="450" y1="250" x2="450" y2="110" stroke="#f39c12" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <text x="460" y="200" fill="#f39c12" font-size="9">5V + GND</text>
+
+    <!-- ===== TMC2209 #1 (M1) ===== -->
+    <rect x="30" y="250" width="140" height="130" rx="10" fill="#3498db15" stroke="#3498db" stroke-width="2"/>
+    <text x="100" y="275" text-anchor="middle" fill="#3498db" font-size="12" font-weight="bold">TMC2209 #1</text>
+    <text x="100" y="295" text-anchor="middle" fill="#3498db" font-size="10">דרייבר M1</text>
+    <text x="100" y="315" text-anchor="middle" fill="#888" font-size="9">VMOT: 24V</text>
+    <text x="100" y="335" text-anchor="middle" fill="#888" font-size="9">STEP ← D6</text>
+    <text x="100" y="355" text-anchor="middle" fill="#888" font-size="9">DIR  ← D7</text>
+    <text x="100" y="370" text-anchor="middle" fill="#888" font-size="9">EN   ← D12</text>
+    <!-- חיבור לארדואינו -->
+    <line x1="170" y1="300" x2="340" y2="380" stroke="#3498db" stroke-width="1.5" marker-end="url(#a1)"/>
+    <!-- חיבור ל-24V -->
+    <line x1="100" y1="250" x2="100" y2="60" stroke="#e74c3c" stroke-width="1.5"/>
+    <circle cx="100" cy="60" r="4" fill="#e74c3c"/>
+
+    <!-- מנוע M1 -->
+    <rect x="30" y="420" width="140" height="70" rx="10" fill="#ff9f4315" stroke="#ff9f43" stroke-width="2"/>
+    <text x="100" y="448" text-anchor="middle" fill="#ff9f43" font-size="13" font-weight="bold">M1 — פידר</text>
+    <text x="100" y="468" text-anchor="middle" fill="#ff9f43" font-size="10">NEMA17 24V</text>
+    <text x="100" y="483" text-anchor="middle" fill="#888" font-size="9">4 חוטים (A1 A2 B1 B2)</text>
+    <!-- חיבור לדרייבר -->
+    <line x1="100" y1="420" x2="100" y2="380" stroke="#ff9f43" stroke-width="2"/>
+
+    <!-- ===== TMC2209 #2 (M2) ===== -->
+    <rect x="380" y="490" width="140" height="130" rx="10" fill="#9b59b615" stroke="#9b59b6" stroke-width="2"/>
+    <text x="450" y="515" text-anchor="middle" fill="#9b59b6" font-size="12" font-weight="bold">TMC2209 #2</text>
+    <text x="450" y="535" text-anchor="middle" fill="#9b59b6" font-size="10">דרייבר M2</text>
+    <text x="450" y="555" text-anchor="middle" fill="#888" font-size="9">VMOT: 24V</text>
+    <text x="450" y="575" text-anchor="middle" fill="#888" font-size="9">STEP ← D8</text>
+    <text x="450" y="595" text-anchor="middle" fill="#888" font-size="9">DIR  ← D9</text>
+    <text x="450" y="610" text-anchor="middle" fill="#888" font-size="9">EN   ← D12</text>
+    <!-- חיבור לארדואינו -->
+    <line x1="450" y1="490" x2="450" y2="430" stroke="#9b59b6" stroke-width="1.5"/>
+    <!-- חיבור ל-24V -->
+    <line x1="520" y1="510" x2="620" y2="510" stroke="#e74c3c" stroke-width="1" stroke-dasharray="3,2"/>
+    <line x1="620" y1="510" x2="620" y2="60" stroke="#e74c3c" stroke-width="1"/>
+    <circle cx="620" cy="60" r="4" fill="#e74c3c"/>
+
+    <!-- מנוע M2 -->
+    <rect x="380" y="640" width="140" height="50" rx="10" fill="#3498db15" stroke="#3498db" stroke-width="2"/>
+    <text x="450" y="662" text-anchor="middle" fill="#3498db" font-size="13" font-weight="bold">M2 — הובלה</text>
+    <text x="450" y="680" text-anchor="middle" fill="#888" font-size="9">NEMA17 24V</text>
+    <line x1="450" y1="640" x2="450" y2="620" stroke="#3498db" stroke-width="2"/>
+
+    <!-- ===== TMC2209 #3 (M3) ===== -->
+    <rect x="700" y="250" width="140" height="130" rx="10" fill="#e67e2215" stroke="#e67e22" stroke-width="2"/>
+    <text x="770" y="275" text-anchor="middle" fill="#e67e22" font-size="12" font-weight="bold">TMC2209 #3</text>
+    <text x="770" y="295" text-anchor="middle" fill="#e67e22" font-size="10">דרייבר M3</text>
+    <text x="770" y="315" text-anchor="middle" fill="#888" font-size="9">VMOT: 24V</text>
+    <text x="770" y="335" text-anchor="middle" fill="#888" font-size="9">STEP ← D10</text>
+    <text x="770" y="355" text-anchor="middle" fill="#888" font-size="9">DIR  ← D11</text>
+    <text x="770" y="370" text-anchor="middle" fill="#888" font-size="9">EN   ← D12</text>
+    <!-- חיבור לארדואינו -->
+    <line x1="700" y1="300" x2="560" y2="390" stroke="#e67e22" stroke-width="1.5" marker-end="url(#a1)"/>
+    <!-- חיבור ל-24V -->
+    <line x1="770" y1="250" x2="770" y2="60" stroke="#e74c3c" stroke-width="1.5"/>
+    <circle cx="770" cy="60" r="4" fill="#e74c3c"/>
+
+    <!-- מנוע M3 -->
+    <rect x="700" y="420" width="140" height="70" rx="10" fill="#9b59b615" stroke="#9b59b6" stroke-width="2"/>
+    <text x="770" y="448" text-anchor="middle" fill="#9b59b6" font-size="13" font-weight="bold">M3 — מדבקה</text>
+    <text x="770" y="468" text-anchor="middle" fill="#9b59b6" font-size="10">NEMA17 24V</text>
+    <text x="770" y="483" text-anchor="middle" fill="#888" font-size="9">4 חוטים (A1 A2 B1 B2)</text>
+    <line x1="770" y1="420" x2="770" y2="380" stroke="#9b59b6" stroke-width="2"/>
+
+    <!-- ===== חיישנים ===== -->
+    <!-- S1 -->
+    <rect x="30" y="530" width="120" height="60" rx="8" fill="#e9456015" stroke="#e94560" stroke-width="2"/>
+    <text x="90" y="555" text-anchor="middle" fill="#e94560" font-size="12" font-weight="bold">S1 — פידר</text>
+    <text x="90" y="575" text-anchor="middle" fill="#888" font-size="9">אופטי → D2</text>
+    <line x1="150" y1="555" x2="340" y2="330" stroke="#e94560" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a-red)"/>
+
+    <!-- S2 -->
+    <rect x="200" y="530" width="120" height="60" rx="8" fill="#e9456015" stroke="#e94560" stroke-width="2"/>
+    <text x="260" y="555" text-anchor="middle" fill="#e94560" font-size="12" font-weight="bold">S2 — הדבקה</text>
+    <text x="260" y="575" text-anchor="middle" fill="#888" font-size="9">אופטי → D3</text>
+    <line x1="300" y1="530" x2="360" y2="345" stroke="#e94560" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a-red)"/>
+
+    <!-- S3 -->
+    <rect x="600" y="530" width="120" height="60" rx="8" fill="#e9456015" stroke="#e94560" stroke-width="2"/>
+    <text x="660" y="555" text-anchor="middle" fill="#e94560" font-size="12" font-weight="bold">S3 — יציאה</text>
+    <text x="660" y="575" text-anchor="middle" fill="#888" font-size="9">אופטי → D4</text>
+    <line x1="620" y1="530" x2="530" y2="360" stroke="#e94560" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a-red)"/>
+
+    <!-- GND connections -->
+    <line x1="100" y1="490" x2="100" y2="680" stroke="#444" stroke-width="1"/>
+    <circle cx="100" cy="680" r="4" fill="#444"/>
+    <line x1="450" y1="690" x2="450" y2="680" stroke="#444" stroke-width="1"/>
+    <circle cx="450" cy="680" r="4" fill="#444"/>
+    <line x1="770" y1="490" x2="770" y2="680" stroke="#444" stroke-width="1"/>
+    <circle cx="770" cy="680" r="4" fill="#444"/>
+    <line x1="90" y1="590" x2="90" y2="680" stroke="#444" stroke-width="1"/>
+    <circle cx="90" cy="680" r="4" fill="#444"/>
+    <line x1="260" y1="590" x2="260" y2="680" stroke="#444" stroke-width="1"/>
+    <circle cx="260" cy="680" r="4" fill="#444"/>
+    <line x1="660" y1="590" x2="660" y2="680" stroke="#444" stroke-width="1"/>
+    <circle cx="660" cy="680" r="4" fill="#444"/>
+  </svg>
+</div>
+</div>
+
+<!-- ==================== דרייברים + מנועים ==================== -->
+<div id="tab-drivers" class="tab-content">
+<div class="card">
+  <div class="card-title">חיבור TMC2209 למנוע NEMA17</div>
+  <svg viewBox="0 0 800 550" xmlns="http://www.w3.org/2000/svg">
+    <rect width="800" height="550" fill="#0d1b2a" rx="12"/>
+
+    <text x="400" y="30" text-anchor="middle" fill="#00d4ff" font-size="16" font-weight="bold">חיבור דרייבר TMC2209 — דוגמה למנוע אחד</text>
+    <text x="400" y="50" text-anchor="middle" fill="#888" font-size="11">(אותו חיבור ×3 עבור M1, M2, M3)</text>
+
+    <!-- TMC2209 Board -->
+    <rect x="250" y="80" width="300" height="380" rx="12" fill="#1a2a4a" stroke="#3498db" stroke-width="2.5"/>
+    <rect x="270" y="90" width="260" height="30" rx="6" fill="#0f3460"/>
+    <text x="400" y="112" text-anchor="middle" fill="#3498db" font-size="14" font-weight="bold">TMC2209 Driver Board</text>
+
+    <!-- פינים צד שמאל -->
+    <text x="275" y="155" fill="#e74c3c" font-size="11" font-weight="bold">VMOT</text>
+    <circle cx="260" cy="150" r="6" fill="#e74c3c30" stroke="#e74c3c" stroke-width="1.5"/>
+    
+    <text x="275" y="185" fill="#444" font-size="11" font-weight="bold">GND (motor)</text>
+    <circle cx="260" cy="180" r="6" fill="#44444430" stroke="#444" stroke-width="1.5"/>
+
+    <text x="275" y="220" fill="#888" font-size="11">2B</text>
+    <circle cx="260" cy="215" r="6" fill="#9b59b630" stroke="#9b59b6" stroke-width="1.5"/>
+
+    <text x="275" y="250" fill="#888" font-size="11">2A</text>
+    <circle cx="260" cy="245" r="6" fill="#9b59b630" stroke="#9b59b6" stroke-width="1.5"/>
+
+    <text x="275" y="280" fill="#888" font-size="11">1A</text>
+    <circle cx="260" cy="275" r="6" fill="#ff9f4330" stroke="#ff9f43" stroke-width="1.5"/>
+
+    <text x="275" y="310" fill="#888" font-size="11">1B</text>
+    <circle cx="260" cy="305" r="6" fill="#ff9f4330" stroke="#ff9f43" stroke-width="1.5"/>
+
+    <!-- פינים צד ימין -->
+    <text x="480" y="155" fill="#f39c12" font-size="11" font-weight="bold" text-anchor="end">VIO (5V)</text>
+    <circle cx="540" cy="150" r="6" fill="#f39c1230" stroke="#f39c12" stroke-width="1.5"/>
+
+    <text x="480" y="185" fill="#444" font-size="11" font-weight="bold" text-anchor="end">GND (logic)</text>
+    <circle cx="540" cy="180" r="6" fill="#44444430" stroke="#444" stroke-width="1.5"/>
+
+    <text x="480" y="220" fill="#2ecc71" font-size="11" font-weight="bold" text-anchor="end">STEP</text>
+    <circle cx="540" cy="215" r="6" fill="#2ecc7130" stroke="#2ecc71" stroke-width="1.5"/>
+
+    <text x="480" y="250" fill="#3498db" font-size="11" font-weight="bold" text-anchor="end">DIR</text>
+    <circle cx="540" cy="245" r="6" fill="#3498db30" stroke="#3498db" stroke-width="1.5"/>
+
+    <text x="480" y="280" fill="#e94560" font-size="11" font-weight="bold" text-anchor="end">EN</text>
+    <circle cx="540" cy="275" r="6" fill="#e9456030" stroke="#e94560" stroke-width="1.5"/>
+
+    <text x="480" y="310" fill="#888" font-size="11" text-anchor="end">MS1</text>
+    <circle cx="540" cy="305" r="6" fill="#88888830" stroke="#888" stroke-width="1.5"/>
+
+    <text x="480" y="340" fill="#888" font-size="11" text-anchor="end">MS2</text>
+    <circle cx="540" cy="335" r="6" fill="#88888830" stroke="#888" stroke-width="1.5"/>
+
+    <!-- Potentiometer -->
+    <circle cx="400" cy="400" r="18" fill="#2d3a4a" stroke="#f39c12" stroke-width="2"/>
+    <text x="400" y="404" text-anchor="middle" fill="#f39c12" font-size="9">VREF</text>
+    <text x="400" y="440" text-anchor="middle" fill="#f39c12" font-size="10">כוונון זרם</text>
+
+    <!-- חיבורים שמאל — לספק -->
+    <line x1="254" y1="150" x2="80" y2="150" stroke="#e74c3c" stroke-width="2"/>
+    <rect x="20" y="135" width="60" height="30" rx="5" fill="#e74c3c20" stroke="#e74c3c" stroke-width="1.5"/>
+    <text x="50" y="154" text-anchor="middle" fill="#e74c3c" font-size="10" font-weight="bold">24V+</text>
+
+    <line x1="254" y1="180" x2="80" y2="180" stroke="#444" stroke-width="2"/>
+    <rect x="20" y="165" width="60" height="30" rx="5" fill="#44444420" stroke="#444" stroke-width="1.5"/>
+    <text x="50" y="184" text-anchor="middle" fill="#888" font-size="10" font-weight="bold">GND</text>
+
+    <!-- חיבורים שמאל — למנוע -->
+    <line x1="254" y1="215" x2="100" y2="270" stroke="#9b59b6" stroke-width="2"/>
+    <line x1="254" y1="245" x2="100" y2="290" stroke="#9b59b6" stroke-width="2"/>
+    <line x1="254" y1="275" x2="100" y2="310" stroke="#ff9f43" stroke-width="2"/>
+    <line x1="254" y1="305" x2="100" y2="330" stroke="#ff9f43" stroke-width="2"/>
+
+    <!-- מנוע -->
+    <rect x="30" y="260" width="120" height="90" rx="10" fill="#16213e" stroke="#27ae60" stroke-width="2"/>
+    <text x="90" y="295" text-anchor="middle" fill="#27ae60" font-size="13" font-weight="bold">NEMA17</text>
+    <text x="90" y="315" text-anchor="middle" fill="#888" font-size="10">4 חוטים</text>
+    <text x="90" y="335" text-anchor="middle" fill="#9b59b6" font-size="9">Coil A (2B, 2A)</text>
+    <text x="90" y="345" text-anchor="middle" fill="#ff9f43" font-size="9">Coil B (1A, 1B)</text>
+
+    <!-- חיבורים ימין — לארדואינו -->
+    <line x1="546" y1="150" x2="700" y2="150" stroke="#f39c12" stroke-width="2"/>
+    <text x="720" y="154" fill="#f39c12" font-size="10">← 5V</text>
+
+    <line x1="546" y1="180" x2="700" y2="180" stroke="#444" stroke-width="2"/>
+    <text x="720" y="184" fill="#888" font-size="10">← GND</text>
+
+    <line x1="546" y1="215" x2="700" y2="215" stroke="#2ecc71" stroke-width="2"/>
+    <text x="720" y="219" fill="#2ecc71" font-size="10">← Arduino D6/D8/D10</text>
+
+    <line x1="546" y1="245" x2="700" y2="245" stroke="#3498db" stroke-width="2"/>
+    <text x="720" y="249" fill="#3498db" font-size="10">← Arduino D7/D9/D11</text>
+
+    <line x1="546" y1="275" x2="700" y2="275" stroke="#e94560" stroke-width="2"/>
+    <text x="720" y="279" fill="#e94560" font-size="10">← Arduino D12</text>
+
+    <!-- הערות למטה -->
+    <text x="400" y="490" text-anchor="middle" fill="#f39c12" font-size="12" font-weight="bold">⚠ חשוב: כוונון זרם (VREF)</text>
+    <text x="400" y="510" text-anchor="middle" fill="#ccc" font-size="11">NEMA17 טיפוסי: 1.5A → VREF ≈ 0.7V</text>
+    <text x="400" y="530" text-anchor="middle" fill="#ccc" font-size="11">נוסחה: VREF = I_motor × 1.41 × R_sense</text>
+    <text x="400" y="545" text-anchor="middle" fill="#888" font-size="10">(R_sense = 0.11Ω ב-TMC2209 טיפוסי)</text>
+  </svg>
+
+  <div class="warn">
+    <div class="warn-title">⚠️ קריטי — סדר חוטי מנוע</div>
+    חוטי המנוע מחולקים ל-2 סלילים (Coil A + Coil B).
+    <br>אם תחבר לא נכון — המנוע יתנהג מוזר או לא יזוז בכלל.
+    <br><br>
+    <strong>איך לזהות:</strong> מדוד עם מולטימטר. שני חוטים עם התנגדות נמוכה (~2-5Ω) = סליל אחד.
+    <br><br>
+    <strong>צבעים טיפוסיים:</strong><br>
+    Coil A: אדום + כחול<br>
+    Coil B: ירוק + שחור<br>
+    <span style="color:#888">(* משתנה בין יצרנים — תמיד תמדוד!)</span>
+  </div>
+
+  <table>
+    <tr><th>דרייבר</th><th>STEP pin</th><th>DIR pin</th><th>EN pin</th><th>מנוע</th></tr>
+    <tr><td>TMC2209 #1</td><td class="dim">D6</td><td class="dim">D7</td><td class="dim">D12</td><td>M1 — פידר</td></tr>
+    <tr><td>TMC2209 #2</td><td class="dim">D8</td><td class="dim">D9</td><td class="dim">D12</td><td>M2 — הובלה</td></tr>
+    <tr><td>TMC2209 #3</td><td class="dim">D10</td><td class="dim">D11</td><td class="dim">D12</td><td>M3 — מדבקה</td></tr>
+  </table>
+</div>
+</div>
+
+<!-- ==================== חיישנים ==================== -->
+<div id="tab-sensors" class="tab-content">
+<div class="card">
+  <div class="card-title">חיבור חיישנים אופטיים</div>
+  <svg viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg">
+    <rect width="800" height="480" fill="#0d1b2a" rx="12"/>
+
+    <text x="400" y="30" text-anchor="middle" fill="#e94560" font-size="16" font-weight="bold">חיישן אופטי חריץ — Optical Slot Sensor</text>
+    <text x="400" y="50" text-anchor="middle" fill="#888" font-size="11">למשל: TCPT1300 / EE-SX671 / GP1A57HRJ00F</text>
+
+    <!-- חיישן -->
+    <rect x="250" y="80" width="200" height="160" rx="12" fill="#16213e" stroke="#e94560" stroke-width="2"/>
+    <text x="350" y="110" text-anchor="middle" fill="#e94560" font-size="13" font-weight="bold">חיישן אופטי</text>
+
+    <!-- U shape -->
+    <path d="M 290 130 L 290 210 L 320 210 L 320 170 L 380 170 L 380 210 L 410 210 L 410 130" fill="none" stroke="#e94560" stroke-width="3"/>
+    <text x="350" y="155" text-anchor="middle" fill="#888" font-size="9">חריץ</text>
+    <!-- LED -->
+    <circle cx="310" cy="185" r="6" fill="#e74c3c50" stroke="#e74c3c" stroke-width="1.5"/>
+    <text x="310" y="188" text-anchor="middle" fill="#e74c3c" font-size="6">IR</text>
+    <!-- Detector -->
+    <circle cx="390" cy="185" r="6" fill="#2ecc7150" stroke="#2ecc71" stroke-width="1.5"/>
+    <text x="390" y="188" text-anchor="middle" fill="#2ecc71" font-size="6">DET</text>
+
+    <!-- כרטיס חותך -->
+    <rect x="335" y="165" width="30" height="8" rx="2" fill="#4ecdc4" opacity="0.6"/>
+    <text x="350" y="230" text-anchor="middle" fill="#4ecdc4" font-size="9">כרטיס חוסם את הקרן</text>
+
+    <!-- 3 חוטים -->
+    <text x="350" y="260" text-anchor="middle" fill="#ccc" font-size="12" font-weight="bold">3 חוטים</text>
+
+    <!-- VCC -->
+    <line x1="290" y1="240" x2="290" y2="310" stroke="#e74c3c" stroke-width="2.5"/>
+    <rect x="260" y="310" width="60" height="25" rx="5" fill="#e74c3c20" stroke="#e74c3c" stroke-width="1.5"/>
+    <text x="290" y="327" text-anchor="middle" fill="#e74c3c" font-size="10" font-weight="bold">VCC 5V</text>
+
+    <!-- GND -->
+    <line x1="350" y1="240" x2="350" y2="310" stroke="#444" stroke-width="2.5"/>
+    <rect x="320" y="310" width="60" height="25" rx="5" fill="#44444420" stroke="#444" stroke-width="1.5"/>
+    <text x="350" y="327" text-anchor="middle" fill="#888" font-size="10" font-weight="bold">GND</text>
+
+    <!-- SIGNAL -->
+    <line x1="410" y1="240" x2="410" y2="310" stroke="#2ecc71" stroke-width="2.5"/>
+    <rect x="380" y="310" width="60" height="25" rx="5" fill="#2ecc7120" stroke="#2ecc71" stroke-width="1.5"/>
+    <text x="410" y="327" text-anchor="middle" fill="#2ecc71" font-size="10" font-weight="bold">SIGNAL</text>
+
+    <!-- חיבור לארדואינו -->
+    <rect x="250" y="370" width="300" height="80" rx="10" fill="#16213e" stroke="#00d4ff" stroke-width="2"/>
+    <text x="400" y="395" text-anchor="middle" fill="#00d4ff" font-size="13" font-weight="bold">Arduino Mega</text>
+
+    <line x1="290" y1="335" x2="290" y2="370" stroke="#e74c3c" stroke-width="1.5"/>
+    <text x="300" y="420" fill="#e74c3c" font-size="10">5V pin</text>
+
+    <line x1="350" y1="335" x2="350" y2="370" stroke="#444" stroke-width="1.5"/>
+    <text x="360" y="420" fill="#888" font-size="10">GND pin</text>
+
+    <line x1="410" y1="335" x2="410" y2="370" stroke="#2ecc71" stroke-width="1.5"/>
+    <text x="420" y="420" fill="#2ecc71" font-size="10">D2 / D3 / D4</text>
+
+    <!-- נגד Pull-up -->
+    <rect x="600" y="100" width="150" height="120" rx="10" fill="#f1c40f15" stroke="#f1c40f" stroke-width="1.5"/>
+    <text x="675" y="125" text-anchor="middle" fill="#f1c40f" font-size="12" font-weight="bold">נגד Pull-Up</text>
+    <text x="675" y="150" text-anchor="middle" fill="#f1c40f" font-size="11">10kΩ</text>
+    <text x="675" y="175" text-anchor="middle" fill="#888" font-size="10">בין SIGNAL ל-5V</text>
+    <text x="675" y="200" text-anchor="middle" fill="#888" font-size="9">(או INPUT_PULLUP בקוד)</text>
+
+    <!-- לוגיקה -->
+    <rect x="580" y="260" width="190" height="100" rx="10" fill="#16213e" stroke="#00d4ff" stroke-width="1.5"/>
+    <text x="675" y="285" text-anchor="middle" fill="#00d4ff" font-size="12" font-weight="bold">לוגיקה</text>
+    <text x="675" y="310" text-anchor="middle" fill="#2ecc71" font-size="11">אין כרטיס → HIGH (5V)</text>
+    <text x="675" y="330" text-anchor="middle" fill="#e74c3c" font-size="11">יש כרטיס → LOW (0V)</text>
+    <text x="675" y="350" text-anchor="middle" fill="#888" font-size="9">(active LOW)</text>
+  </svg>
+
+  <table>
+    <tr><th>חיישן</th><th>פין Arduino</th><th>VCC</th><th>לוגיקה</th><th>מיקום</th></tr>
+    <tr><td class="dim">S1</td><td class="dim">D2</td><td>5V</td><td>LOW = יש כרטיס</td><td>פידר — תחתית מחסנית</td></tr>
+    <tr><td class="dim">S2</td><td class="dim">D3</td><td>5V</td><td>LOW = כרטיס הגיע</td><td>לפני אזור הדבקה</td></tr>
+    <tr><td class="dim">S3</td><td class="dim">D4</td><td>5V</td><td>LOW = כרטיס יצא</td><td>אחרי רולר יציאה</td></tr>
+  </table>
+
+  <div class="info">
+    <div class="info-title">💡 למה חיישן אופטי חריץ?</div>
+    • אין מגע פיזי עם הכרטיס (אין שחיקה)<br>
+    • תגובה מהירה מאוד (&lt;1ms)<br>
+    • זול (2-5 ₪ ליחידה)<br>
+    • אמין — לא מושפע מצבע או חומר הכרטיס<br>
+    • פשוט — רק 3 חוטים
+  </div>
+</div>
+</div>
+
+<!-- ==================== ספק כוח ==================== -->
+<div id="tab-power" class="tab-content">
+<div class="card">
+  <div class="card-title">מערכת חשמל — חישוב צריכת זרם</div>
+
+  <table>
+    <tr><th>רכיב</th><th>מתח</th><th>זרם מקס׳</th><th>הספק</th></tr>
+    <tr><td>M1 — NEMA17 פידר</td><td class="dim">24V</td><td class="dim">1.5A</td><td>36W</td></tr>
+    <tr><td>M2 — NEMA17 הובלה</td><td class="dim">24V</td><td class="dim">1.5A</td><td>36W</td></tr>
+    <tr><td>M3 — NEMA17 מדבקה</td><td class="dim">24V</td><td class="dim">1.5A</td><td>36W</td></tr>
+    <tr><td>Arduino Mega + חיישנים</td><td class="dim">5V</td><td class="dim">0.5A</td><td>2.5W</td></tr>
+    <tr><td>TMC2209 × 3 (לוגיקה)</td><td class="dim">5V</td><td class="dim">0.3A</td><td>1.5W</td></tr>
+    <tr style="background:#0f3460"><td><strong>סה״כ מקסימלי</strong></td><td class="dim">24V</td><td class="dim">~5.5A</td><td><strong>~112W</strong></td></tr>
+    <tr style="background:#e74c3c15"><td><strong>ספק מומלץ (×1.5)</strong></td><td class="dim">24V</td><td class="dim">10A</td><td><strong>240W</strong></td></tr>
+  </table>
+
+  <svg viewBox="0 0 800 350" xmlns="http://www.w3.org/2000/svg">
+    <rect width="800" height="350" fill="#0d1b2a" rx="12"/>
+
+    <text x="400" y="30" text-anchor="middle" fill="#e74c3c" font-size="14" font-weight="bold">חיבור ספק כוח — סכמה</text>
+
+    <!-- כבל חשמל -->
+    <rect x="30" y="80" width="100" height="60" rx="8" fill="#44444420" stroke="#888" stroke-width="2"/>
+    <text x="80" y="105" text-anchor="middle" fill="#888" font-size="11">שקע</text>
+    <text x="80" y="125" text-anchor="middle" fill="#888" font-size="11">AC 220V</text>
+
+    <!-- ספק -->
+    <rect x="180" y="60" width="200" height="100" rx="12" fill="#e74c3c15" stroke="#e74c3c" stroke-width="2.5"/>
+    <text x="280" y="90" text-anchor="middle" fill="#e74c3c" font-size="13" font-weight="bold">PSU 24V / 10A</text>
+    <text x="280" y="110" text-anchor="middle" fill="#888" font-size="10">Mean Well LRS-350-24</text>
+    <text x="280" y="130" text-anchor="middle" fill="#888" font-size="9">או ספק LED 24V 10A</text>
+
+    <!-- AC חיבור -->
+    <line x1="130" y1="100" x2="180" y2="100" stroke="#888" stroke-width="2"/>
+    <text x="155" y="92" text-anchor="middle" fill="#888" font-size="8">L N PE</text>
+
+    <!-- DC outputs -->
+    <!-- V+ -->
+    <line x1="380" y1="85" x2="500" y2="85" stroke="#e74c3c" stroke-width="3"/>
+    <text x="440" y="78" fill="#e74c3c" font-size="11" font-weight="bold">V+ (24V)</text>
+    <!-- V- -->
+    <line x1="380" y1="130" x2="500" y2="130" stroke="#444" stroke-width="3"/>
+    <text x="440" y="148" fill="#888" font-size="11" font-weight="bold">V- (GND)</text>
+
+    <!-- פיצול 24V -->
+    <!-- לדרייברים -->
+    <line x1="500" y1="85" x2="700" y2="85" stroke="#e74c3c" stroke-width="2"/>
+    <text x="600" y="78" fill="#e74c3c" font-size="10">→ TMC2209 ×3 (VMOT)</text>
+
+    <!-- ל-Buck -->
+    <line x1="500" y1="85" x2="500" y2="200" stroke="#e74c3c" stroke-width="2"/>
+    <rect x="440" y="200" width="120" height="60" rx="8" fill="#f39c1215" stroke="#f39c12" stroke-width="2"/>
+    <text x="500" y="225" text-anchor="middle" fill="#f39c12" font-size="11" font-weight="bold">LM2596</text>
+    <text x="500" y="245" text-anchor="middle" fill="#f39c12" font-size="10">24V → 5V</text>
+
+    <!-- 5V output -->
+    <line x1="560" y1="230" x2="700" y2="230" stroke="#f39c12" stroke-width="2"/>
+    <text x="630" y="223" fill="#f39c12" font-size="10">5V → Arduino + חיישנים</text>
+
+    <!-- GND -->
+    <line x1="500" y1="130" x2="700" y2="130" stroke="#444" stroke-width="2"/>
+    <text x="600" y="148" fill="#888" font-size="10">GND → כל הרכיבים</text>
+
+    <!-- קבל -->
+    <rect x="520" y="85" width="8" height="40" rx="2" fill="#3498db50" stroke="#3498db" stroke-width="1.5"/>
+    <text x="540" y="110" fill="#3498db" font-size="9">100µF</text>
+    <text x="540" y="122" fill="#888" font-size="8">סינון</text>
+
+    <!-- אזהרות -->
+    <text x="400" y="300" text-anchor="middle" fill="#e74c3c" font-size="13" font-weight="bold">⚠ בטיחות חשמלית</text>
+    <text x="400" y="320" text-anchor="middle" fill="#ccc" font-size="11">• קבל 100µF על כניסת 24V לכל דרייבר</text>
+    <text x="400" y="338" text-anchor="middle" fill="#ccc" font-size="11">• לעולם אל תנתק מנוע כשהמתח דלוק!</text>
+  </svg>
+
+  <div class="danger">
+    <div class="danger-title">🔴 אזהרות בטיחות קריטיות</div>
+    1. <strong>לעולם אל תנתק חוט מנוע כשהספק דלוק</strong> — ישרוף את הדרייבר מיד!<br>
+    2. <strong>קבל 100µF 35V</strong> — חובה על כל כניסת VMOT של דרייבר<br>
+    3. <strong>GND משותף</strong> — כל ה-GND חייבים להיות מחוברים יחד<br>
+    4. <strong>לוגיקה 5V בלבד</strong> — אל תחבר 24V לפין של הארדואינו!<br>
+    5. <strong>ספק 220V</strong> — הספק מחובר לחשמל ביתי. עבוד רק כשהוא מנותק!
+  </div>
+</div>
+</div>
+
+<!-- ==================== טבלת פינים ==================== -->
+<div id="tab-pins" class="tab-content">
+<div class="card">
+  <div class="card-title">טבלת פינים מלאה — Arduino Mega 2560</div>
+
+  <table class="pin-table">
+    <tr><th>פין Arduino</th><th>כיוון</th><th>מחובר ל-</th><th>תפקיד</th></tr>
+    <tr><td>D2</td><td>INPUT_PULLUP</td><td>S1 — חיישן פידר</td><td>זיהוי כרטיס בפידר</td></tr>
+    <tr><td>D3</td><td>INPUT_PULLUP</td><td>S2 — חיישן הדבקה</td><td>טריגר הדבקה</td></tr>
+    <tr><td>D4</td><td>INPUT_PULLUP</td><td>S3 — חיישן יציאה</td><td>סוף מחזור</td></tr>
+    <tr><td>D6</td><td>OUTPUT</td><td>TMC2209 #1 STEP</td><td>M1 פידר — צעדים</td></tr>
+    <tr><td>D7</td><td>OUTPUT</td><td>TMC2209 #1 DIR</td><td>M1 פידר — כיוון</td></tr>
+    <tr><td>D8</td><td>OUTPUT</td><td>TMC2209 #2 STEP</td><td>M2 הובלה — צעדים</td></tr>
+    <tr><td>D9</td><td>OUTPUT</td><td>TMC2209 #2 DIR</td><td>M2 הובלה — כיוון</td></tr>
+    <tr><td>D10</td><td>OUTPUT</td><td>TMC2209 #3 STEP</td><td>M3 מדבקה — צעדים</td></tr>
+    <tr><td>D11</td><td>OUTPUT</td><td>TMC2209 #3 DIR</td><td>M3 מדבקה — כיוון</td></tr>
+    <tr><td>D12</td><td>OUTPUT</td><td>TMC2209 ×3 EN</td><td>Enable (משותף, LOW=ON)</td></tr>
+    <tr><td>5V</td><td>POWER</td><td>LM2596 OUT</td><td>כניסת 5V מממיר</td></tr>
+    <tr><td>GND</td><td>POWER</td><td>GND משותף</td><td>אדמה</td></tr>
+    <tr><td>D13</td><td>OUTPUT</td><td>LED מצב (אופציונלי)</td><td>מהבהב בזמן עבודה</td></tr>
+  </table>
+
+  <div class="info">
+    <div class="info-title">💡 למה פינים D6-D12?</div>
+    • D6, D8, D10 הם פינים עם Timer — מאפשרים PWM מהיר לצעדים<br>
+    • D2, D3, D4 תומכים ב-Interrupts — תגובה מהירה מהחיישנים<br>
+    • D12 משותף לכל ה-EN — פין אחד מכבה/מדליק את כל המנועים
+  </div>
+
+  <svg viewBox="0 0 800 280" xmlns="http://www.w3.org/2000/svg">
+    <rect width="800" height="280" fill="#0d1b2a" rx="12"/>
+    <text x="400" y="25" text-anchor="middle" fill="#00d4ff" font-size="14" font-weight="bold">מפת חיבורים ויזואלית</text>
+
+    <!-- Arduino -->
+    <rect x="300" y="60" width="200" height="180" rx="10" fill="#16213e" stroke="#00d4ff" stroke-width="2.5"/>
+    <text x="400" y="85" text-anchor="middle" fill="#00d4ff" font-size="13" font-weight="bold">Arduino Mega</text>
+
+    <!-- חיישנים (שמאל) -->
+    <rect x="40" y="70" width="100" height="30" rx="6" fill="#e9456020" stroke="#e94560" stroke-width="1.5"/>
+    <text x="90" y="90" text-anchor="middle" fill="#e94560" font-size="10">S1 → D2</text>
+    <line x1="140" y1="85" x2="300" y2="100" stroke="#e94560" stroke-width="1.5"/>
+
+    <rect x="40" y="110" width="100" height="30" rx="6" fill="#e9456020" stroke="#e94560" stroke-width="1.5"/>
+    <text x="90" y="130" text-anchor="middle" fill="#e94560" font-size="10">S2 → D3</text>
+    <line x1="140" y1="125" x2="300" y2="120" stroke="#e94560" stroke-width="1.5"/>
+
+    <rect x="40" y="150" width="100" height="30" rx="6" fill="#e9456020" stroke="#e94560" stroke-width="1.5"/>
+    <text x="90" y="170" text-anchor="middle" fill="#e94560" font-size="10">S3 → D4</text>
+    <line x1="140" y1="165" x2="300" y2="140" stroke="#e94560" stroke-width="1.5"/>
+
+    <!-- דרייברים (ימין) -->
+    <rect x="600" y="70" width="140" height="40" rx="6" fill="#3498db20" stroke="#3498db" stroke-width="1.5"/>
+    <text x="670" y="90" text-anchor="middle" fill="#3498db" font-size="10">TMC #1 (M1)</text>
+    <text x="670" y="103" text-anchor="middle" fill="#888" font-size="8">D6 STEP, D7 DIR</text>
+    <line x1="500" y1="110" x2="600" y2="90" stroke="#3498db" stroke-width="1.5"/>
+
+    <rect x="600" y="130" width="140" height="40" rx="6" fill="#9b59b620" stroke="#9b59b6" stroke-width="1.5"/>
+    <text x="670" y="150" text-anchor="middle" fill="#9b59b6" font-size="10">TMC #2 (M2)</text>
+    <text x="670" y="163" text-anchor="middle" fill="#888" font-size="8">D8 STEP, D9 DIR</text>
+    <line x1="500" y1="150" x2="600" y2="150" stroke="#9b59b6" stroke-width="1.5"/>
+
+    <rect x="600" y="190" width="140" height="40" rx="6" fill="#e67e2220" stroke="#e67e22" stroke-width="1.5"/>
+    <text x="670" y="210" text-anchor="middle" fill="#e67e22" font-size="10">TMC #3 (M3)</text>
+    <text x="670" y="223" text-anchor="middle" fill="#888" font-size="8">D10 STEP, D11 DIR</text>
+    <line x1="500" y1="190" x2="600" y2="210" stroke="#e67e22" stroke-width="1.5"/>
+
+    <!-- EN משותף -->
+    <line x1="500" y1="210" x2="550" y2="250" stroke="#e94560" stroke-width="1.5"/>
+    <line x1="550" y1="250" x2="670" y2="250" stroke="#e94560" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="610" y="265" text-anchor="middle" fill="#e94560" font-size="9">D12 → EN (משותף ×3)</text>
+  </svg>
+</div>
+</div>
+
+<!-- ==================== חיווט פיזי ==================== -->
+<div id="tab-wiring" class="tab-content">
+<div class="card">
+  <div class="card-title">🔌 הנחיות חיווט פיזי</div>
+
+  <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+    <rect width="800" height="400" fill="#0d1b2a" rx="12"/>
+
+    <text x="400" y="30" text-anchor="middle" fill="#00d4ff" font-size="14" font-weight="bold">תרשים חיווט בקופסת האלקטרוניקה</text>
+
+    <!-- קופסה -->
+    <rect x="50" y="50" width="700" height="320" rx="14" fill="#16213e" stroke="#4a5a6a" stroke-width="2"/>
+
+    <!-- ספק -->
+    <rect x="80" y="70" width="120" height="70" rx="8" fill="#e74c3c15" stroke="#e74c3c" stroke-width="2"/>
+    <text x="140" y="95" text-anchor="middle" fill="#e74c3c" font-size="11" font-weight="bold">PSU 24V</text>
+    <text x="140" y="115" text-anchor="middle" fill="#888" font-size="9">AC IN ←</text>
+    <text x="140" y="128" text-anchor="middle" fill="#888" font-size="9">DC OUT →</text>
+
+    <!-- Buck -->
+    <rect x="80" y="160" width="80" height="50" rx="6" fill="#f39c1215" stroke="#f39c12" stroke-width="1.5"/>
+    <text x="120" y="185" text-anchor="middle" fill="#f39c12" font-size="10">LM2596</text>
+    <text x="120" y="200" text-anchor="middle" fill="#f39c12" font-size="8">24→5V</text>
+
+    <!-- Arduino -->
+    <rect x="300" y="160" width="160" height="90" rx="8" fill="#00d4ff15" stroke="#00d4ff" stroke-width="2"/>
+    <text x="380" y="185" text-anchor="middle" fill="#00d4ff" font-size="12" font-weight="bold">Arduino Mega</text>
+    <text x="380" y="205" text-anchor="middle" fill="#888" font-size="9">USB port ←</text>
+    <text x="380" y="225" text-anchor="middle" fill="#888" font-size="9">(לתכנות + סריאל)</text>
+
+    <!-- דרייברים -->
+    <rect x="540" y="70" width="80" height="60" rx="6" fill="#3498db15" stroke="#3498db" stroke-width="1.5"/>
+    <text x="580" y="95" text-anchor="middle" fill="#3498db" font-size="10">TMC #1</text>
+    <text x="580" y="115" text-anchor="middle" fill="#888" font-size="8">M1 פידר</text>
+
+    <rect x="540" y="145" width="80" height="60" rx="6" fill="#9b59b615" stroke="#9b59b6" stroke-width="1.5"/>
+    <text x="580" y="170" text-anchor="middle" fill="#9b59b6" font-size="10">TMC #2</text>
+    <text x="580" y="190" text-anchor="middle" fill="#888" font-size="8">M2 הובלה</text>
+
+    <rect x="540" y="220" width="80" height="60" rx="6" fill="#e67e2215" stroke="#e67e22" stroke-width="1.5"/>
+    <text x="580" y="245" text-anchor="middle" fill="#e67e22" font-size="10">TMC #3</text>
+    <text x="580" y="265" text-anchor="middle" fill="#888" font-size="8">M3 מדבקה</text>
+
+    <!-- Terminal blocks -->
+    <rect x="660" y="70" width="60" height="210" rx="6" fill="none" stroke="#888" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="690" y="90" text-anchor="middle" fill="#888" font-size="8">Terminal</text>
+    <text x="690" y="105" text-anchor="middle" fill="#888" font-size="8">Blocks</text>
+
+    <!-- מחברים למנועים -->
+    <text x="710" y="130" fill="#ff9f43" font-size="9">→ M1</text>
+    <text x="710" y="180" fill="#3498db" font-size="9">→ M2</text>
+    <text x="710" y="230" fill="#9b59b6" font-size="9">→ M3</text>
+    <text x="710" y="260" fill="#e94560" font-size="9">→ S1</text>
+    <text x="710" y="270" fill="#e94560" font-size="9">→ S2</text>
+    <text x="710" y="280" fill="#e94560" font-size="9">→ S3</text>
+
+    <!-- חיבוריים פנימיים -->
+    <line x1="200" y1="100" x2="300" y2="100" stroke="#e74c3c" stroke-width="1.5"/>
+    <line x1="300" y1="100" x2="540" y2="100" stroke="#e74c3c" stroke-width="1.5"/>
+    <text x="420" y="95" fill="#e74c3c" font-size="8">24V</text>
+
+    <line x1="160" y1="185" x2="300" y2="185" stroke="#f39c12" stroke-width="1.5"/>
+    <text x="230" y="180" fill="#f39c12" font-size="8">5V</text>
+
+    <line x1="460" y1="200" x2="540" y2="170" stroke="#00d4ff" stroke-width="1" stroke-dasharray="3,2"/>
+    <line x1="460" y1="200" x2="540" y2="245" stroke="#00d4ff" stroke-width="1" stroke-dasharray="3,2"/>
+    <line x1="460" y1="190" x2="540" y2="95" stroke="#00d4ff" stroke-width="1" stroke-dasharray="3,2"/>
+
+    <!-- כבלים יוצאים -->
+    <text x="400" y="340" text-anchor="middle" fill="#ccc" font-size="12" font-weight="bold">כבלים יוצאים מהקופסה:</text>
+    <text x="400" y="358" text-anchor="middle" fill="#888" font-size="10">3 כבלי מנוע (4 חוטים כ״א) + 3 כבלי חיישן (3 חוטים כ״א) + כבל AC</text>
+  </svg>
+
+  <div class="info">
+    <div class="info-title">📌 טיפים לחיווט</div>
+    • <strong>כבלי מנוע:</strong> השתמש בכבל 4-גידי, 22AWG לפחות. כבל רשת (Ethernet) עובד מצוין!<br>
+    • <strong>כבלי חיישן:</strong> כבל 3-גידי דק, 24-26AWG מספיק<br>
+    • <strong>מחברים:</strong> השתמש ב-JST-XH או Dupont עם נעילה<br>
+    • <strong>Terminal Blocks:</strong> על קופסת האלקטרוניקה — חיבור/ניתוק מהיר<br>
+    • <strong>סימון:</strong> סמן כל כבל עם תווית (M1, M2, M3, S1, S2, S3)
+  </div>
+
+  <table>
+    <tr><th>כבל</th><th>מ-</th><th>אל-</th><th>חוטים</th><th>אורך מומלץ</th></tr>
+    <tr><td>M1</td><td>TMC #1</td><td>מנוע פידר</td><td class="dim">4 גידים</td><td>30-40 ס״מ</td></tr>
+    <tr><td>M2</td><td>TMC #2</td><td>מנוע הובלה</td><td class="dim">4 גידים</td><td>30-40 ס״מ</td></tr>
+    <tr><td>M3</td><td>TMC #3</td><td>מנוע מדבקה</td><td class="dim">4 גידים</td><td>40-50 ס״מ</td></tr>
+    <tr><td>S1</td><td>Arduino D2</td><td>חיישן פידר</td><td class="dim">3 גידים</td><td>20-30 ס״מ</td></tr>
+    <tr><td>S2</td><td>Arduino D3</td><td>חיישן הדבקה</td><td class="dim">3 גידים</td><td>30-40 ס״מ</td></tr>
+    <tr><td>S3</td><td>Arduino D4</td><td>חיישן יציאה</td><td class="dim">3 גידים</td><td>40-50 ס״מ</td></tr>
+    <tr><td>AC</td><td>שקע 220V</td><td>ספק כוח</td><td class="dim">3 גידים (L,N,PE)</td><td>100 ס״מ</td></tr>
+  </table>
+
+  <div class="danger">
+    <div class="danger-title">🔴 בטיחות חיווט</div>
+    • <strong>GND אחיד:</strong> כל ה-GND חייבים להיות מחוברים לנקודה אחת (Star Ground)<br>
+    • <strong>הפרדה:</strong> כבלי 24V רחוק ככל האפשר מכבלי חיישן 5V<br>
+    • <strong>ניתוב:</strong> אל תעביר כבלי מנוע ליד כבלי חיישן — רעש חשמלי<br>
+    • <strong>קבלים:</strong> 100µF על כל כניסת VMOT + 10µF על כניסת 5V של Arduino
+  </div>
+</div>
+</div>
+
+<script>
+function showTab(name){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

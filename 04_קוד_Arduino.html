@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מכונת מדבקות - שלב 4: קוד Arduino</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:16px}
+h1{text-align:center;color:#00d4ff;margin-bottom:4px;font-size:1.4em}
+.subtitle{text-align:center;color:#888;margin-bottom:20px;font-size:0.85em}
+.tab-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tab-btn{background:#0f3460;color:#ccc;border:none;padding:9px 14px;border-radius:10px;cursor:pointer;font-size:0.85em;font-family:inherit}
+.tab-btn.active{background:#e94560;color:#fff}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.card{background:#16213e;border-radius:14px;padding:16px;border:1px solid #0f3460;margin-bottom:14px}
+.card-title{color:#e94560;font-weight:bold;font-size:1.05em;margin-bottom:10px}
+svg{width:100%;height:auto;display:block}
+table{width:100%;border-collapse:collapse;font-size:0.85em;margin:8px 0}
+th{background:#0f3460;color:#00d4ff;padding:8px;text-align:right;border:1px solid #1a3a6a}
+td{padding:7px 8px;border:1px solid #0f346066;background:#16213e}
+.dim{color:#00d4ff;font-weight:bold}
+.warn{background:#e67e2218;border:1px solid #e67e22;border-radius:10px;padding:12px;margin:12px 0;font-size:0.9em}
+.warn-title{color:#e67e22;font-weight:bold;margin-bottom:4px}
+.info{background:#3498db18;border:1px solid #3498db;border-radius:10px;padding:12px;margin:12px 0;font-size:0.9em}
+.info-title{color:#3498db;font-weight:bold;margin-bottom:4px}
+.success{background:#2ecc7118;border:1px solid #2ecc71;border-radius:10px;padding:12px;margin:12px 0;font-size:0.9em}
+.success-title{color:#2ecc71;font-weight:bold;margin-bottom:4px}
+.danger{background:#e74c3c18;border:1px solid #e74c3c;border-radius:10px;padding:12px;margin:12px 0;font-size:0.9em}
+.danger-title{color:#e74c3c;font-weight:bold;margin-bottom:4px}
+.code-block{background:#0a0e1a;border:1px solid #1a3a6a;border-radius:10px;padding:14px;font-family:'Consolas','Courier New',monospace;font-size:0.82em;direction:ltr;text-align:left;overflow-x:auto;margin:10px 0;color:#ddd;line-height:1.6}
+.code-block .kw{color:#c678dd}
+.code-block .fn{color:#61afef}
+.code-block .str{color:#98c379}
+.code-block .num{color:#d19a66}
+.code-block .cm{color:#5c6370;font-style:italic}
+.code-block .type{color:#e5c07b}
+.step-box{display:flex;align-items:flex-start;gap:14px;margin:10px 0;padding:12px;background:#0f3460;border-radius:10px}
+.step-num{background:#e94560;color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:1.1em;flex-shrink:0}
+.step-text{flex:1}
+.step-text strong{color:#00d4ff}
+@media(max-width:600px){body{padding:8px}h1{font-size:1.15em}.tab-btn{padding:7px 10px;font-size:0.8em}}
+</style>
+</head>
+<body>
+
+<h1>שלב 4: קוד Arduino</h1>
+<p class="subtitle">מכונת הדבקת מדבקות לכרטיסי אשראי — תוכנה</p>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('overview')">סקירה כללית</button>
+  <button class="tab-btn" onclick="showTab('install')">התקנה</button>
+  <button class="tab-btn" onclick="showTab('states')">מכונת מצבים</button>
+  <button class="tab-btn" onclick="showTab('calibration')">כיול</button>
+  <button class="tab-btn" onclick="showTab('serial')">תפריט סריאל</button>
+  <button class="tab-btn" onclick="showTab('troubleshoot')">פתרון בעיות</button>
+</div>
+
+<!-- ==================== סקירה כללית ==================== -->
+<div id="tab-overview" class="tab-content active">
+<div class="card">
+  <div class="card-title">איך הקוד עובד?</div>
+
+  <svg viewBox="0 0 800 520" xmlns="http://www.w3.org/2000/svg">
+    <rect width="800" height="520" fill="#0d1b2a" rx="12"/>
+    <text x="400" y="30" text-anchor="middle" fill="#00d4ff" font-size="16" font-weight="bold">מחזור עבודה — תרשים זרימה</text>
+
+    <!-- IDLE -->
+    <rect x="310" y="55" width="180" height="45" rx="22" fill="#2ecc7130" stroke="#2ecc71" stroke-width="2"/>
+    <text x="400" y="83" text-anchor="middle" fill="#2ecc71" font-size="13" font-weight="bold">IDLE — ממתין</text>
+
+    <line x1="400" y1="100" x2="400" y2="130" stroke="#888" stroke-width="2" marker-end="url(#arw)"/>
+    <defs><marker id="arw" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#888"/></marker></defs>
+
+    <!-- S1? -->
+    <polygon points="400,130 470,160 400,190 330,160" fill="#f39c1220" stroke="#f39c12" stroke-width="2"/>
+    <text x="400" y="164" text-anchor="middle" fill="#f39c12" font-size="11">S1 = כרטיס?</text>
+
+    <text x="475" y="148" fill="#e74c3c" font-size="10">לא ←</text>
+    <line x1="470" y1="160" x2="530" y2="160" stroke="#e74c3c" stroke-width="1.5"/>
+    <line x1="530" y1="160" x2="530" y2="75" stroke="#e74c3c" stroke-width="1.5"/>
+    <line x1="530" y1="75" x2="490" y2="75" stroke="#e74c3c" stroke-width="1.5" marker-end="url(#arw)"/>
+
+    <text x="405" y="205" fill="#2ecc71" font-size="10">כן ↓</text>
+    <line x1="400" y1="190" x2="400" y2="220" stroke="#2ecc71" stroke-width="2" marker-end="url(#arw)"/>
+
+    <!-- FEEDING -->
+    <rect x="310" y="220" width="180" height="45" rx="10" fill="#3498db30" stroke="#3498db" stroke-width="2"/>
+    <text x="400" y="240" text-anchor="middle" fill="#3498db" font-size="12" font-weight="bold">FEEDING</text>
+    <text x="400" y="256" text-anchor="middle" fill="#888" font-size="10">M1 דוחף כרטיס</text>
+
+    <line x1="400" y1="265" x2="400" y2="295" stroke="#888" stroke-width="2" marker-end="url(#arw)"/>
+
+    <!-- TRANSPORT -->
+    <rect x="310" y="295" width="180" height="45" rx="10" fill="#9b59b630" stroke="#9b59b6" stroke-width="2"/>
+    <text x="400" y="315" text-anchor="middle" fill="#9b59b6" font-size="12" font-weight="bold">TRANSPORT</text>
+    <text x="400" y="331" text-anchor="middle" fill="#888" font-size="10">M2 מוביל, ממתין ל-S2</text>
+
+    <line x1="400" y1="340" x2="400" y2="365" stroke="#888" stroke-width="2" marker-end="url(#arw)"/>
+
+    <!-- LABEL OFFSET -->
+    <rect x="300" y="365" width="200" height="45" rx="10" fill="#e67e2230" stroke="#e67e22" stroke-width="2"/>
+    <text x="400" y="385" text-anchor="middle" fill="#e67e22" font-size="12" font-weight="bold">LABEL OFFSET</text>
+    <text x="400" y="401" text-anchor="middle" fill="#888" font-size="10">ממתין למיקום הנכון</text>
+
+    <line x1="400" y1="410" x2="400" y2="435" stroke="#888" stroke-width="2" marker-end="url(#arw)"/>
+
+    <!-- LABELING -->
+    <rect x="300" y="435" width="200" height="45" rx="10" fill="#e9456030" stroke="#e94560" stroke-width="2.5"/>
+    <text x="400" y="455" text-anchor="middle" fill="#e94560" font-size="12" font-weight="bold">★ LABELING ★</text>
+    <text x="400" y="471" text-anchor="middle" fill="#888" font-size="10">M2 + M3 מסונכרנים!</text>
+
+    <!-- EXIT -->
+    <rect x="560" y="435" width="140" height="45" rx="10" fill="#2ecc7130" stroke="#2ecc71" stroke-width="2"/>
+    <text x="630" y="455" text-anchor="middle" fill="#2ecc71" font-size="12" font-weight="bold">EXIT</text>
+    <text x="630" y="471" text-anchor="middle" fill="#888" font-size="10">כרטיס יוצא</text>
+
+    <line x1="500" y1="457" x2="560" y2="457" stroke="#888" stroke-width="2" marker-end="url(#arw)"/>
+
+    <!-- Back to IDLE -->
+    <line x1="630" y1="435" x2="630" y2="75" stroke="#2ecc71" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <line x1="630" y1="75" x2="490" y2="75" stroke="#2ecc71" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arw)"/>
+    <text x="640" y="250" fill="#2ecc71" font-size="10">חזרה ↑</text>
+
+    <!-- ERROR -->
+    <rect x="60" y="290" width="140" height="50" rx="10" fill="#e74c3c25" stroke="#e74c3c" stroke-width="2"/>
+    <text x="130" y="312" text-anchor="middle" fill="#e74c3c" font-size="12" font-weight="bold">ERROR</text>
+    <text x="130" y="330" text-anchor="middle" fill="#888" font-size="10">timeout / תקלה</text>
+    <line x1="310" y1="320" x2="200" y2="315" stroke="#e74c3c" stroke-width="1.5" stroke-dasharray="4,2"/>
+
+    <!-- Legend -->
+    <rect x="50" y="420" width="180" height="85" rx="8" fill="#16213e" stroke="#333" stroke-width="1"/>
+    <text x="140" y="440" text-anchor="middle" fill="#888" font-size="10" font-weight="bold">מקרא</text>
+    <circle cx="70" cy="458" r="5" fill="#3498db"/>
+    <text x="85" y="462" fill="#888" font-size="10">M1 = מנוע פידר</text>
+    <circle cx="70" cy="478" r="5" fill="#9b59b6"/>
+    <text x="85" y="482" fill="#888" font-size="10">M2 = מנוע הובלה</text>
+    <circle cx="70" cy="498" r="5" fill="#e94560"/>
+    <text x="85" y="502" fill="#888" font-size="10">M3 = מנוע מדבקה</text>
+  </svg>
+
+  <div class="info">
+    <div class="info-title">💡 הנקודה המרכזית — סנכרון</div>
+    בזמן ההדבקה (LABELING), מנוע M2 (הובלה) ומנוע M3 (מדבקה) חייבים לרוץ <strong>באותה מהירות ליניארית</strong> (מ"מ/שנייה).
+    <br>אם M2 מהיר יותר — המדבקה תימרח. אם M3 מהיר יותר — המדבקה תתקמט.
+    <br><br>
+    הקוד מוודא ששתי המהירויות זהות: <strong>250 מ"מ/שנייה</strong>.
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">מבנה הקובץ</div>
+  <table>
+    <tr><th>חלק</th><th>שורות</th><th>תיאור</th></tr>
+    <tr><td>הגדרות פינים</td><td class="dim">~40-65</td><td>כל הפינים של החיישנים, מנועים, LED</td></tr>
+    <tr><td>קבועים מכניים</td><td class="dim">~67-95</td><td>צעדים, קטרים, מידות כרטיס</td></tr>
+    <tr><td>מרחקים (כיול)</td><td class="dim">~97-108</td><td>⭐ ערכים שצריך לכוון — feedDistance, labelTriggerOffset</td></tr>
+    <tr><td>מהירויות (כיול)</td><td class="dim">~110-120</td><td>⭐ מהירויות ניתנות לשינוי</td></tr>
+    <tr><td>מכונת מצבים</td><td class="dim">~122-220</td><td>6 מצבים + ERROR + TEST</td></tr>
+    <tr><td>תפריט בדיקה</td><td class="dim">~222-350</td><td>בדיקת מנועים, חיישנים, כיול</td></tr>
+    <tr><td>פונקציות עזר</td><td class="dim">~352-420</td><td>המרות, LED, timeout</td></tr>
+  </table>
+</div>
+</div>
+
+<!-- ==================== התקנה ==================== -->
+<div id="tab-install" class="tab-content">
+<div class="card">
+  <div class="card-title">🔧 איך להעלות את הקוד לארדואינו</div>
+
+  <div class="step-box">
+    <div class="step-num">1</div>
+    <div class="step-text">
+      <strong>התקנת Arduino IDE</strong><br>
+      הורידו מ: <span style="color:#00d4ff">https://www.arduino.cc/en/software</span><br>
+      גרסה 2.x מומלצת
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">2</div>
+    <div class="step-text">
+      <strong>התקנת ספריית AccelStepper</strong><br>
+      בתוך Arduino IDE:<br>
+      • לכו ל: <span style="color:#f39c12">Sketch → Include Library → Manage Libraries</span><br>
+      • חפשו: <span style="color:#f39c12">AccelStepper</span><br>
+      • לחצו <span style="color:#2ecc71">Install</span>
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">3</div>
+    <div class="step-text">
+      <strong>פתיחת הקוד</strong><br>
+      • <span style="color:#f39c12">File → Open</span><br>
+      • נווטו לתיקייה: <span style="color:#00d4ff">מכונת מדבקות\sticker_machine\</span><br>
+      • פתחו: <span style="color:#00d4ff">sticker_machine.ino</span>
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">4</div>
+    <div class="step-text">
+      <strong>בחירת לוח</strong><br>
+      • <span style="color:#f39c12">Tools → Board → Arduino Mega or Mega 2560</span><br>
+      • <span style="color:#f39c12">Tools → Port → COM?</span> (המספר שמופיע כשמחברים USB)
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">5</div>
+    <div class="step-text">
+      <strong>העלאה</strong><br>
+      • לחצו על ← (חץ ימינה) — כפתור <span style="color:#2ecc71">Upload</span><br>
+      • חכו ל: <span style="color:#2ecc71">"Done uploading"</span><br>
+      • פתחו: <span style="color:#f39c12">Tools → Serial Monitor</span> (115200 baud)
+    </div>
+  </div>
+
+  <div class="warn">
+    <div class="warn-title">⚠️ חשוב!</div>
+    • <strong>אל תחברו מנועים לפני ההעלאה הראשונה</strong> — קודם בדקו שהקוד עולה בלי שגיאות<br>
+    • <strong>בדיקה ראשונה:</strong> פתחו Serial Monitor ושלחו 'T' (תפריט בדיקה)<br>
+    • <strong>בדקו חיישנים:</strong> שלחו '4' — וודאו שהחיישנים מגיבים נכון
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">⚡ חיבור USB לתכנות</div>
+  <svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+    <rect width="600" height="200" fill="#0d1b2a" rx="12"/>
+
+    <!-- מחשב -->
+    <rect x="30" y="60" width="120" height="80" rx="8" fill="#16213e" stroke="#888" stroke-width="2"/>
+    <text x="90" y="95" text-anchor="middle" fill="#888" font-size="12">מחשב</text>
+    <text x="90" y="115" text-anchor="middle" fill="#00d4ff" font-size="10">Arduino IDE</text>
+    <text x="90" y="130" text-anchor="middle" fill="#888" font-size="9">Serial Monitor</text>
+
+    <!-- USB cable -->
+    <line x1="150" y1="100" x2="280" y2="100" stroke="#f39c12" stroke-width="3"/>
+    <text x="215" y="90" text-anchor="middle" fill="#f39c12" font-size="10">USB Type-B</text>
+
+    <!-- Arduino -->
+    <rect x="280" y="50" width="150" height="100" rx="10" fill="#16213e" stroke="#00d4ff" stroke-width="2"/>
+    <text x="355" y="80" text-anchor="middle" fill="#00d4ff" font-size="13" font-weight="bold">Arduino</text>
+    <text x="355" y="100" text-anchor="middle" fill="#00d4ff" font-size="12">Mega 2560</text>
+    <text x="355" y="120" text-anchor="middle" fill="#888" font-size="9">115200 baud</text>
+
+    <!-- ספק -->
+    <rect x="470" y="60" width="100" height="80" rx="8" fill="#e74c3c15" stroke="#e74c3c" stroke-width="1.5"/>
+    <text x="520" y="95" text-anchor="middle" fill="#e74c3c" font-size="10">ספק 24V</text>
+    <text x="520" y="115" text-anchor="middle" fill="#888" font-size="9">(נפרד)</text>
+
+    <line x1="430" y1="100" x2="470" y2="100" stroke="#e74c3c" stroke-width="2"/>
+
+    <text x="300" y="180" text-anchor="middle" fill="#888" font-size="11">USB = תכנות + תקשורת סריאלית (לא מספק מספיק זרם למנועים)</text>
+  </svg>
+</div>
+</div>
+
+<!-- ==================== מכונת מצבים ==================== -->
+<div id="tab-states" class="tab-content">
+<div class="card">
+  <div class="card-title">מכונת מצבים — הסבר מפורט</div>
+
+  <div class="step-box">
+    <div class="step-num" style="background:#2ecc71">1</div>
+    <div class="step-text">
+      <strong style="color:#2ecc71">IDLE — ממתין לכרטיס</strong><br>
+      המכונה בודקת את חיישן S1 (פידר). כשכרטיס מזוהה → עוברת ל-FEEDING.<br>
+      <span style="color:#888">LED מהבהב לאט (1 שנייה)</span>
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num" style="background:#3498db">2</div>
+    <div class="step-text">
+      <strong style="color:#3498db">FEEDING — דחיפת כרטיס</strong><br>
+      מנוע M1 מסובב את גלגל הגומי, שדוחף את הכרטיס התחתון מהמחסנית אל המסילה.<br>
+      מרחק: <span class="dim">55 מ"מ</span> (ניתן לכיול)<br>
+      כשהמנוע מסיים → עוברת ל-TRANSPORT
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num" style="background:#9b59b6">3</div>
+    <div class="step-text">
+      <strong style="color:#9b59b6">TRANSPORT — הובלה לאזור הדבקה</strong><br>
+      מנוע M2 מוביל את הכרטיס לאורך המסילה. ממתין שחיישן S2 יזהה את הכרטיס.<br>
+      מהירות: <span class="dim">250 מ"מ/שנייה</span><br>
+      כש-S2 מופעל → עוברת ל-LABEL_OFFSET
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num" style="background:#e67e22">4</div>
+    <div class="step-text">
+      <strong style="color:#e67e22">LABEL_OFFSET — מיקום מדויק</strong><br>
+      הכרטיס ממשיך לנוע, אבל המדבקה עוד לא מתחילה.<br>
+      הקוד מחשב את המרחק המדויק מנקודת S2 עד למיקום שבו המדבקה צריכה להתחיל.<br>
+      מרחק: <span class="dim">30 מ"מ</span> (ניתן לכיול! זה הערך הכי חשוב)<br>
+      כשהמיקום מושג → עוברת ל-LABELING
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num" style="background:#e94560">5</div>
+    <div class="step-text">
+      <strong style="color:#e94560">★ LABELING — הדבקה!</strong><br>
+      מנוע M3 מתחיל למשוך את רצועת המדבקות דרך ה-Peel Plate.<br>
+      <span style="color:#e94560;font-weight:bold">M2 ו-M3 חייבים לרוץ באותה מהירות!</span><br>
+      המדבקה מתקלפת מהרצועה ונדבקת על הכרטיס בלחץ הרולר.<br>
+      אורך מדבקה: <span class="dim">28 מ"מ</span> (+ 5% מרווח)<br>
+      כש-S3 מופעל או שהמנועים סיימו → עוברת ל-EXIT
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num" style="background:#2ecc71">6</div>
+    <div class="step-text">
+      <strong style="color:#2ecc71">EXIT — סיום</strong><br>
+      הכרטיס נדחף ליציאה. מונה מחזורים עולה ב-1.<br>
+      השהייה של 200ms → חוזרת ל-IDLE
+    </div>
+  </div>
+
+  <div class="danger">
+    <div class="danger-title">🔴 ERROR — שגיאה</div>
+    מופעל אוטומטית ב-3 מצבים:<br>
+    • <strong>Timeout:</strong> מצב נמשך יותר מ-8 שניות<br>
+    • <strong>S2 לא הגיב:</strong> הכרטיס לא הגיע לאזור ההדבקה<br>
+    • <strong>חריגה:</strong> משהו שגוי בלוגיקה<br><br>
+    <strong>איך לצאת:</strong> שלח 'R' ב-Serial Monitor (אפס מכונה)
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">תזמון מחזור — 1.5 שניות</div>
+  <svg viewBox="0 0 800 150" xmlns="http://www.w3.org/2000/svg">
+    <rect width="800" height="150" fill="#0d1b2a" rx="12"/>
+
+    <!-- ציר זמן -->
+    <line x1="50" y1="80" x2="750" y2="80" stroke="#444" stroke-width="2"/>
+
+    <!-- FEED -->
+    <rect x="50" y="55" width="120" height="50" rx="6" fill="#3498db30" stroke="#3498db" stroke-width="1.5"/>
+    <text x="110" y="78" text-anchor="middle" fill="#3498db" font-size="10" font-weight="bold">FEED</text>
+    <text x="110" y="95" text-anchor="middle" fill="#888" font-size="9">~0.35s</text>
+
+    <!-- TRANSPORT -->
+    <rect x="180" y="55" width="140" height="50" rx="6" fill="#9b59b630" stroke="#9b59b6" stroke-width="1.5"/>
+    <text x="250" y="78" text-anchor="middle" fill="#9b59b6" font-size="10" font-weight="bold">TRANSPORT</text>
+    <text x="250" y="95" text-anchor="middle" fill="#888" font-size="9">~0.40s</text>
+
+    <!-- OFFSET -->
+    <rect x="330" y="55" width="80" height="50" rx="6" fill="#e67e2230" stroke="#e67e22" stroke-width="1.5"/>
+    <text x="370" y="78" text-anchor="middle" fill="#e67e22" font-size="10" font-weight="bold">OFFSET</text>
+    <text x="370" y="95" text-anchor="middle" fill="#888" font-size="9">~0.12s</text>
+
+    <!-- LABEL -->
+    <rect x="420" y="55" width="140" height="50" rx="6" fill="#e9456030" stroke="#e94560" stroke-width="2"/>
+    <text x="490" y="78" text-anchor="middle" fill="#e94560" font-size="10" font-weight="bold">LABEL ★</text>
+    <text x="490" y="95" text-anchor="middle" fill="#888" font-size="9">~0.11s</text>
+
+    <!-- EXIT -->
+    <rect x="570" y="55" width="100" height="50" rx="6" fill="#2ecc7130" stroke="#2ecc71" stroke-width="1.5"/>
+    <text x="620" y="78" text-anchor="middle" fill="#2ecc71" font-size="10" font-weight="bold">EXIT</text>
+    <text x="620" y="95" text-anchor="middle" fill="#888" font-size="9">~0.35s</text>
+
+    <!-- סה"כ -->
+    <line x1="50" y1="125" x2="670" y2="125" stroke="#00d4ff" stroke-width="2"/>
+    <text x="360" y="142" text-anchor="middle" fill="#00d4ff" font-size="12" font-weight="bold">סה"כ: ~1.33 שניות = ~45 כרטיסים/דקה</text>
+
+    <!-- חצים -->
+    <text x="50" y="48" fill="#888" font-size="10">0s</text>
+    <text x="670" y="48" fill="#888" font-size="10">1.5s</text>
+  </svg>
+</div>
+</div>
+
+<!-- ==================== כיול ==================== -->
+<div id="tab-calibration" class="tab-content">
+<div class="card">
+  <div class="card-title">⭐ כיול — הערכים שצריך לכוון</div>
+
+  <div class="warn">
+    <div class="warn-title">⚠️ הערכים בקוד הם נקודת התחלה!</div>
+    כל מכונה שונה קצת. אחרי ההרכבה, תצטרך לכוון 2-3 ערכים.<br>
+    אפשר לכוון דרך תפריט הבדיקה (Serial Monitor) בלי לשנות קוד!
+  </div>
+
+  <table>
+    <tr><th>ערך</th><th>ברירת מחדל</th><th>מה זה</th><th>איך לכוון</th></tr>
+    <tr>
+      <td class="dim">feedDistance</td>
+      <td>55.0 מ"מ</td>
+      <td>כמה מ"מ הפידר דוחף את הכרטיס</td>
+      <td>אם הכרטיס לא מגיע למסילה — הגדל. אם יוצא יותר מדי — הקטן.</td>
+    </tr>
+    <tr>
+      <td class="dim" style="color:#e94560">labelTriggerOffset ⭐</td>
+      <td>30.0 מ"מ</td>
+      <td>מרחק מ-S2 עד תחילת ההדבקה</td>
+      <td>
+        <strong>זה הערך הכי חשוב!</strong><br>
+        אם המדבקה קדימה מדי — הגדל.<br>
+        אם המדבקה אחורה מדי — הקטן.<br>
+        כוון ב-'6' (+1מ"מ) ו-'7' (-1מ"מ) בתפריט בדיקה.
+      </td>
+    </tr>
+    <tr>
+      <td class="dim">transportSpeedMM</td>
+      <td>250.0 מ"מ/ש</td>
+      <td>מהירות הובלת הכרטיס</td>
+      <td>אם כרטיסים מחליקים — האט. כוון ב-'8'/'9' בתפריט.</td>
+    </tr>
+  </table>
+
+  <div class="success">
+    <div class="success-title">✅ תהליך כיול מומלץ</div>
+    1. <strong>בדוק חיישנים:</strong> שלח '4' — וודא שכל 3 החיישנים מגיבים<br>
+    2. <strong>בדוק מנועים:</strong> שלח '1', '2', '3' — וודא שכל מנוע מסתובב<br>
+    3. <strong>הרץ מחזור עם כרטיס:</strong> שלח '5' (Single Cycle) — צפה במכונה<br>
+    4. <strong>כוון offset:</strong> בדוק איפה המדבקה נופלת על הכרטיס. שלח '6' או '7' להזזה<br>
+    5. <strong>חזור:</strong> הרץ עוד מחזור ובדוק. חזור עד שהמדבקה במרכז הכרטיס.
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">חישוב VREF — כוונון זרם דרייבר</div>
+
+  <div class="code-block">
+<span class="cm">// TMC2209 VREF calculation</span>
+<span class="cm">// =======================================</span>
+<span class="cm">// Motor rated current: 1.5A (typical NEMA17)</span>
+<span class="cm">// TMC2209 R_sense:     0.11Ω (board default)</span>
+<span class="cm">// </span>
+<span class="cm">// Formula: VREF = I_RMS × √2 × R_sense × 5</span>
+<span class="cm">//        = 1.5  × 1.414 × 0.11 × 5</span>
+<span class="cm">//        = <span style="color:#e94560">1.166V</span></span>
+<span class="cm">//</span>
+<span class="cm">// Start at 70%: <span style="color:#2ecc71">VREF ≈ 0.8V</span></span>
+<span class="cm">// Increase slowly if motors skip steps</span>
+<span class="cm">// =======================================</span>
+  </div>
+
+  <div class="info">
+    <div class="info-title">💡 איך לכוון VREF</div>
+    1. מדד עם מולטימטר בין GND לנקודת VREF (בורג קטן על הדרייבר)<br>
+    2. התחל ב-0.5V (בטוח)<br>
+    3. הפעל מנוע. אם מדלג צעדים — הגבר ב-0.1V<br>
+    4. <strong>אם הדרייבר מתחמם מאוד — הנמך!</strong>
+  </div>
+</div>
+</div>
+
+<!-- ==================== תפריט סריאל ==================== -->
+<div id="tab-serial" class="tab-content">
+<div class="card">
+  <div class="card-title">📡 תפריט Serial Monitor</div>
+
+  <div class="info">
+    <div class="info-title">פתיחת Serial Monitor</div>
+    ב-Arduino IDE: <span style="color:#f39c12">Tools → Serial Monitor</span><br>
+    הגדרות: <span class="dim">115200 baud</span> — צד ימין למטה
+  </div>
+
+  <table>
+    <tr><th>פקודה</th><th>מתי</th><th>מה עושה</th></tr>
+    <tr><td class="dim">T</td><td>תמיד</td><td>נכנס לתפריט בדיקה (עוצר מכונה)</td></tr>
+    <tr><td class="dim">X</td><td>בתפריט</td><td>יוצא מתפריט בדיקה → חזרה ל-IDLE</td></tr>
+    <tr><td class="dim">S</td><td>תמיד</td><td>מציג מצב נוכחי, מונה מחזורים, מיקומים</td></tr>
+    <tr><td class="dim">R</td><td>תמיד</td><td>איפוס מכונה (גם יציאה משגיאה)</td></tr>
+    <tr><td class="dim">1</td><td>בתפריט</td><td>סובב M1 (פידר) סיבוב אחד</td></tr>
+    <tr><td class="dim">2</td><td>בתפריט</td><td>סובב M2 (הובלה) סיבוב אחד</td></tr>
+    <tr><td class="dim">3</td><td>בתפריט</td><td>סובב M3 (מדבקה) סיבוב אחד</td></tr>
+    <tr><td class="dim">4</td><td>בתפריט</td><td>קרא מצב כל 3 חיישנים</td></tr>
+    <tr><td class="dim">5</td><td>בתפריט</td><td>הרץ מחזור בודד (חזרה ל-IDLE, ממתין לכרטיס)</td></tr>
+    <tr><td class="dim">6</td><td>בתפריט</td><td>הגדל label offset ב-1 מ"מ</td></tr>
+    <tr><td class="dim">7</td><td>בתפריט</td><td>הקטן label offset ב-1 מ"מ</td></tr>
+    <tr><td class="dim">8</td><td>בתפריט</td><td>הגדל מהירות ב-10 מ"מ/ש</td></tr>
+    <tr><td class="dim">9</td><td>בתפריט</td><td>הקטן מהירות ב-10 מ"מ/ש</td></tr>
+  </table>
+
+  <div class="code-block" style="direction:ltr;">
+<span class="cm">// דוגמה — מה רואים ב-Serial Monitor:</span>
+
+========================================
+  Sticker Machine v1.0
+  Credit Card Label Applicator
+========================================
+
+System ready.
+Insert cards into feeder magazine.
+
+Type 'T' for test menu, 'S' for status
+========================================
+
+[IDLE → FEED] Card detected in feeder
+[FEED → TRANSPORT] Card on rails
+[TRANSPORT → LABEL_OFFSET] S2 triggered!
+[LABEL_OFFSET → LABELING] Starting label at offset 30.2 mm
+[LABELING] Label application complete
+[LABELING → EXIT] S3 triggered
+
+=== Cycle #1 COMPLETE ===
+
+[IDLE → FEED] Card detected in feeder
+...
+  </div>
+</div>
+</div>
+
+<!-- ==================== פתרון בעיות ==================== -->
+<div id="tab-troubleshoot" class="tab-content">
+<div class="card">
+  <div class="card-title">🔍 פתרון בעיות נפוצות</div>
+
+  <table>
+    <tr><th>בעיה</th><th>סיבה אפשרית</th><th>פתרון</th></tr>
+    <tr>
+      <td>מנוע לא זז</td>
+      <td>EN pin ב-HIGH, חיווט שגוי, VREF נמוך מדי</td>
+      <td>בדוק חיווט. בתפריט בדיקה שלח '1'/'2'/'3'. הגבר VREF.</td>
+    </tr>
+    <tr>
+      <td>מנוע רוטט אבל לא מסתובב</td>
+      <td>חוטי סליל מוחלפים</td>
+      <td>מדוד התנגדות בין כל 2 חוטים. שני חוטים עם ~3Ω = סליל אחד.</td>
+    </tr>
+    <tr>
+      <td>מנוע מדלג צעדים</td>
+      <td>VREF נמוך / מהירות גבוהה מדי</td>
+      <td>הגבר VREF ב-0.1V. הנמך מהירות בפקודה '9'.</td>
+    </tr>
+    <tr>
+      <td>חיישן לא מגיב</td>
+      <td>חיווט שגוי, VCC/GND מוחלפים</td>
+      <td>שלח '4' בתפריט. בדוק 5V ו-GND. בדוק עם מולטימטר.</td>
+    </tr>
+    <tr>
+      <td>חיישן תמיד BLOCKED</td>
+      <td>משהו חוסם את חריץ החיישן</td>
+      <td>נקה את החיישן. בדוק שאין לכלוך.</td>
+    </tr>
+    <tr>
+      <td>מדבקה לא במרכז</td>
+      <td>labelTriggerOffset לא מכוול</td>
+      <td>כוון ב-'6' (+1מ"מ) או '7' (-1מ"מ). הרץ מחזור ובדוק.</td>
+    </tr>
+    <tr>
+      <td>מדבקה מתקמטת</td>
+      <td>M3 מהיר מ-M2</td>
+      <td>ודא שהמהירויות זהות. בדוק קוטר רולר.</td>
+    </tr>
+    <tr>
+      <td>מדבקה נמרחת</td>
+      <td>M2 מהיר מ-M3</td>
+      <td>ודא שהמהירויות זהות. בדוק קוטר רולר.</td>
+    </tr>
+    <tr>
+      <td>כרטיס נתקע</td>
+      <td>מסילה צרה, מהירות גבוהה</td>
+      <td>הרחב מסילה. הנמך מהירות.</td>
+    </tr>
+    <tr>
+      <td>TIMEOUT error</td>
+      <td>כרטיס לא הגיע לחיישן בזמן</td>
+      <td>בדוק חיישנים. הנמך מהירות. הוצא כרטיסים תקועים.</td>
+    </tr>
+    <tr>
+      <td>דרייבר מתחמם</td>
+      <td>VREF גבוה מדי</td>
+      <td>הנמך VREF. הוסף גוף קירור (heatsink).</td>
+    </tr>
+  </table>
+
+  <div class="danger">
+    <div class="danger-title">🔴 לעולם לא:</div>
+    • <strong>אל תנתק חוט מנוע כשהמתח דלוק</strong> — ישרוף את הדרייבר<br>
+    • <strong>אל תחליף חוטי מנוע כשהמנוע פועל</strong><br>
+    • <strong>אל תגע במנוע בזמן סיבוב</strong><br>
+    • <strong>אל תכניס יד למכונה בזמן פעולה</strong>
+  </div>
+
+  <div class="success">
+    <div class="success-title">✅ סדר בדיקה ראשונה</div>
+    1. חבר רק Arduino + USB (בלי מנועים, בלי 24V)<br>
+    2. העלה קוד. פתח Serial Monitor. ודא שרואים הודעת "Ready"<br>
+    3. שלח 'T' — ודא שתפריט מופיע<br>
+    4. כבה. חבר חיישנים + 5V (עדיין בלי 24V ובלי מנועים)<br>
+    5. הדלק. שלח '4' — בדוק חיישנים<br>
+    6. כבה. חבר דרייברים + מנועים + 24V<br>
+    7. הדלק. שלח '1', '2', '3' — בדוק מנועים אחד אחד<br>
+    8. שלח '5' — הרץ מחזור מלא עם כרטיס<br>
+    9. כוון labelTriggerOffset עד שהמדבקה במרכז
+  </div>
+</div>
+</div>
+
+<script>
+function showTab(name){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

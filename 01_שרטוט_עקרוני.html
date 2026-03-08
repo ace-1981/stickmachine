@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מכונת הדבקת מדבקות - שרטוט עקרוני</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:16px}
+h1{text-align:center;color:#00d4ff;margin-bottom:8px;font-size:1.5em}
+h2{color:#00d4ff;margin:20px 0 10px;font-size:1.2em;border-bottom:2px solid #00d4ff33;padding-bottom:6px}
+.subtitle{text-align:center;color:#888;margin-bottom:20px;font-size:0.9em}
+.views{display:flex;flex-direction:column;gap:24px;max-width:1000px;margin:0 auto}
+.view-card{background:#16213e;border-radius:16px;padding:16px;border:1px solid #0f3460}
+.view-title{color:#e94560;font-weight:bold;font-size:1.1em;margin-bottom:12px}
+svg{width:100%;height:auto;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;font-size:0.8em}
+.legend-item{display:flex;align-items:center;gap:6px}
+.legend-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.flow-card{background:#16213e;border-radius:16px;padding:16px;border:1px solid #0f3460}
+.specs-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.spec-box{background:#0f3460;border-radius:10px;padding:12px}
+.spec-box h3{color:#00d4ff;font-size:0.95em;margin-bottom:8px}
+.spec-box ul{list-style:none;padding:0}
+.spec-box li{padding:3px 0;font-size:0.85em;border-bottom:1px solid #ffffff11}
+.spec-box li:last-child{border:none}
+.tab-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.tab-btn{background:#0f3460;color:#ccc;border:none;padding:10px 18px;border-radius:10px;cursor:pointer;font-size:0.95em;font-family:inherit}
+.tab-btn.active{background:#e94560;color:#fff}
+.tab-content{display:none}
+.tab-content.active{display:block}
+@media(max-width:600px){
+  .specs-grid{grid-template-columns:1fr}
+  body{padding:8px}
+  h1{font-size:1.2em}
+}
+</style>
+</head>
+<body>
+
+<h1>מכונת הדבקת מדבקות לכרטיסי אשראי</h1>
+<p class="subtitle">שרטוט עקרוני - גרסה 1.0</p>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('side')">מבט צד</button>
+  <button class="tab-btn" onclick="showTab('top')">מבט על</button>
+  <button class="tab-btn" onclick="showTab('front')">מבט חזית</button>
+  <button class="tab-btn" onclick="showTab('flow')">תרשים זרימה</button>
+  <button class="tab-btn" onclick="showTab('specs')">רכיבים</button>
+</div>
+
+<!-- ==================== מבט צד ==================== -->
+<div id="tab-side" class="tab-content active">
+<div class="view-card">
+  <div class="view-title">מבט צד — SIDE VIEW</div>
+  <svg viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background grid -->
+    <defs>
+      <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#ffffff08" stroke-width="0.5"/>
+      </pattern>
+      <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#00d4ff"/>
+      </marker>
+      <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#e94560"/>
+      </marker>
+    </defs>
+    <rect width="900" height="520" fill="#0d1b2a" rx="12"/>
+    <rect width="900" height="520" fill="url(#grid)"/>
+
+    <!-- כיוון תנועה -->
+    <line x1="100" y1="30" x2="750" y2="30" stroke="#00d4ff" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="8,4"/>
+    <text x="420" y="24" text-anchor="middle" fill="#00d4ff" font-size="13">כיוון תנועת הכרטיס</text>
+
+    <!-- בסיס מכונה -->
+    <rect x="40" y="380" width="820" height="18" rx="4" fill="#2d3a4a" stroke="#4a5a6a" stroke-width="1.5"/>
+    <text x="450" y="415" text-anchor="middle" fill="#666" font-size="11">בסיס מכונה</text>
+
+    <!-- ===== מודול A: פידר ===== -->
+    <!-- מחסנית כרטיסים -->
+    <rect x="60" y="180" width="90" height="120" rx="4" fill="none" stroke="#ff9f43" stroke-width="2" stroke-dasharray="6,3"/>
+    <text x="105" y="210" text-anchor="middle" fill="#ff9f43" font-size="11">מחסנית</text>
+    <text x="105" y="225" text-anchor="middle" fill="#ff9f43" font-size="11">כרטיסים</text>
+    <!-- כרטיסים בתוך -->
+    <rect x="75" y="240" width="60" height="3" rx="1" fill="#4ecdc4" opacity="0.6"/>
+    <rect x="75" y="247" width="60" height="3" rx="1" fill="#4ecdc4" opacity="0.5"/>
+    <rect x="75" y="254" width="60" height="3" rx="1" fill="#4ecdc4" opacity="0.4"/>
+    <rect x="75" y="261" width="60" height="3" rx="1" fill="#4ecdc4" opacity="0.3"/>
+    <rect x="75" y="268" width="60" height="3" rx="1" fill="#4ecdc4" opacity="0.2"/>
+
+    <!-- מנוע M1 -->
+    <rect x="55" y="320" width="50" height="50" rx="6" fill="#1e3a5f" stroke="#3498db" stroke-width="2"/>
+    <circle cx="80" cy="345" r="12" fill="none" stroke="#3498db" stroke-width="1.5"/>
+    <text x="80" y="349" text-anchor="middle" fill="#3498db" font-size="10" font-weight="bold">M1</text>
+
+    <!-- גלגל הזנה -->
+    <circle cx="140" cy="340" r="14" fill="#27ae60" opacity="0.3" stroke="#27ae60" stroke-width="2"/>
+    <text x="140" y="344" text-anchor="middle" fill="#27ae60" font-size="8">גומי</text>
+
+    <!-- חיישן S1 -->
+    <rect x="115" y="300" width="12" height="18" rx="3" fill="#e94560"/>
+    <text x="121" y="295" text-anchor="middle" fill="#e94560" font-size="10" font-weight="bold">S1</text>
+
+    <!-- תווית מודול A -->
+    <text x="105" y="175" text-anchor="middle" fill="#ff9f43" font-size="12" font-weight="bold">מודול A - פידר</text>
+
+    <!-- ===== מסילת כרטיס ===== -->
+    <!-- מסילה עליונה -->
+    <rect x="160" y="330" width="550" height="5" rx="2" fill="#4a5a6a"/>
+    <!-- מסילה תחתונה -->
+    <rect x="160" y="355" width="550" height="5" rx="2" fill="#4a5a6a"/>
+
+    <!-- כרטיס בתנועה -->
+    <rect x="330" y="336" width="86" height="18" rx="3" fill="#4ecdc4" stroke="#2ecc71" stroke-width="1.5"/>
+    <text x="373" y="349" text-anchor="middle" fill="#0d1b2a" font-size="9" font-weight="bold">כרטיס</text>
+
+    <!-- ===== רולר R1 (כניסה) ===== -->
+    <circle cx="200" cy="330" r="12" fill="#1e3a5f" stroke="#3498db" stroke-width="1.5"/>
+    <text x="200" y="334" text-anchor="middle" fill="#3498db" font-size="8">R1</text>
+    <circle cx="200" cy="360" r="12" fill="#1e3a5f" stroke="#3498db" stroke-width="1.5"/>
+    <text x="200" y="364" text-anchor="middle" fill="#3498db" font-size="7">R1b</text>
+
+    <!-- מנוע M2 -->
+    <rect x="175" y="370" width="50" height="35" rx="6" fill="#1e3a5f" stroke="#3498db" stroke-width="2"/>
+    <text x="200" y="392" text-anchor="middle" fill="#3498db" font-size="10" font-weight="bold">M2</text>
+
+    <!-- תווית מודול B -->
+    <text x="400" y="315" text-anchor="middle" fill="#3498db" font-size="12" font-weight="bold">מודול B - מסילת הובלה</text>
+
+    <!-- ===== חיישן S2 ===== -->
+    <rect x="444" y="300" width="12" height="18" rx="3" fill="#e94560"/>
+    <text x="450" y="295" text-anchor="middle" fill="#e94560" font-size="10" font-weight="bold">S2</text>
+
+    <!-- קו סטופר -->
+    <line x1="460" y1="326" x2="460" y2="364" stroke="#e94560" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="475" y="324" fill="#e94560" font-size="8">סטופר</text>
+
+    <!-- ===== מודול C: ראש הדבקה ===== -->
+    <!-- גליל מדבקות -->
+    <circle cx="480" cy="160" r="50" fill="#2d1b4e" stroke="#9b59b6" stroke-width="2.5"/>
+    <circle cx="480" cy="160" r="35" fill="#3d2b5e" stroke="#9b59b6" stroke-width="1"/>
+    <circle cx="480" cy="160" r="8" fill="#4a3570" stroke="#9b59b6" stroke-width="1.5"/>
+    <text x="480" y="164" text-anchor="middle" fill="#9b59b6" font-size="9">ציר</text>
+    <text x="480" y="100" text-anchor="middle" fill="#9b59b6" font-size="12" font-weight="bold">מודול C - ראש הדבקה</text>
+    <text x="480" y="116" text-anchor="middle" fill="#9b59b6" font-size="10">גליל מדבקות</text>
+
+    <!-- סרט מדבקות יורד -->
+    <line x1="480" y1="210" x2="480" y2="260" stroke="#f1c40f" stroke-width="3"/>
+    <text x="500" y="240" fill="#f1c40f" font-size="9">סרט</text>
+
+    <!-- Peel Plate -->
+    <path d="M 450 260 L 510 260 L 500 290 L 460 290 Z" fill="#e67e22" opacity="0.3" stroke="#e67e22" stroke-width="2"/>
+    <text x="480" y="278" text-anchor="middle" fill="#e67e22" font-size="9" font-weight="bold">PEEL</text>
+    <text x="480" y="289" text-anchor="middle" fill="#e67e22" font-size="8">PLATE</text>
+
+    <!-- מדבקה מתקלפת -->
+    <line x1="480" y1="290" x2="465" y2="325" stroke="#f1c40f" stroke-width="2.5" stroke-dasharray="5,3"/>
+    <rect x="455" y="316" width="24" height="14" rx="2" fill="#f1c40f" opacity="0.7" stroke="#f1c40f" stroke-width="1"/>
+    <text x="467" y="327" text-anchor="middle" fill="#0d1b2a" font-size="7">מדבקה</text>
+
+    <!-- מנוע M3 -->
+    <rect x="530" y="240" width="45" height="40" rx="6" fill="#1e3a5f" stroke="#9b59b6" stroke-width="2"/>
+    <text x="552" y="264" text-anchor="middle" fill="#9b59b6" font-size="10" font-weight="bold">M3</text>
+
+    <!-- רולר לחיצה -->
+    <circle cx="480" cy="370" r="10" fill="#e74c3c" opacity="0.3" stroke="#e74c3c" stroke-width="2"/>
+    <text x="480" y="374" text-anchor="middle" fill="#e74c3c" font-size="7">R</text>
+    <!-- קפיץ -->
+    <path d="M 480 380 Q 476 385 480 390 Q 484 395 480 400" fill="none" stroke="#e74c3c" stroke-width="1.5"/>
+    <text x="495" y="395" fill="#e74c3c" font-size="8">קפיץ</text>
+
+    <!-- ===== רולר R2 (יציאה) ===== -->
+    <circle cx="660" cy="330" r="12" fill="#1e3a5f" stroke="#3498db" stroke-width="1.5"/>
+    <text x="660" y="334" text-anchor="middle" fill="#3498db" font-size="8">R2</text>
+    <circle cx="660" cy="360" r="12" fill="#1e3a5f" stroke="#3498db" stroke-width="1.5"/>
+    <text x="660" y="364" text-anchor="middle" fill="#3498db" font-size="7">R2b</text>
+
+    <!-- ===== מודול D: יציאה ===== -->
+    <!-- חיישן S3 -->
+    <rect x="734" y="300" width="12" height="18" rx="3" fill="#e94560"/>
+    <text x="740" y="295" text-anchor="middle" fill="#e94560" font-size="10" font-weight="bold">S3</text>
+
+    <!-- מגש יציאה -->
+    <path d="M 720 360 L 820 360 L 840 380 L 720 380 Z" fill="#2d3a4a" stroke="#4a5a6a" stroke-width="1.5"/>
+    <text x="775" y="374" text-anchor="middle" fill="#888" font-size="10">מגש יציאה</text>
+
+    <!-- תווית מודול D -->
+    <text x="770" y="285" text-anchor="middle" fill="#e94560" font-size="12" font-weight="bold">מודול D - יציאה</text>
+
+    <!-- ===== מידות ===== -->
+    <!-- אורך כללי -->
+    <line x1="50" y1="460" x2="850" y2="460" stroke="#00d4ff" stroke-width="1" marker-end="url(#arrow)"/>
+    <line x1="850" y1="460" x2="50" y2="460" stroke="#00d4ff" stroke-width="1" marker-end="url(#arrow)"/>
+    <line x1="50" y1="450" x2="50" y2="470" stroke="#00d4ff" stroke-width="1"/>
+    <line x1="850" y1="450" x2="850" y2="470" stroke="#00d4ff" stroke-width="1"/>
+    <text x="450" y="478" text-anchor="middle" fill="#00d4ff" font-size="12">~320 מ״מ</text>
+
+    <!-- גובה -->
+    <line x1="870" y1="100" x2="870" y2="398" stroke="#00d4ff" stroke-width="1"/>
+    <line x1="860" y1="100" x2="880" y2="100" stroke="#00d4ff" stroke-width="1"/>
+    <line x1="860" y1="398" x2="880" y2="398" stroke="#00d4ff" stroke-width="1"/>
+    <text x="880" y="255" fill="#00d4ff" font-size="11" transform="rotate(90,880,255)">~160 מ״מ</text>
+
+    <!-- קווי חלוקת מודולים -->
+    <line x1="160" y1="50" x2="160" y2="440" stroke="#ffffff15" stroke-width="1" stroke-dasharray="8,6"/>
+    <line x1="430" y1="50" x2="430" y2="440" stroke="#ffffff15" stroke-width="1" stroke-dasharray="8,6"/>
+    <line x1="540" y1="50" x2="540" y2="440" stroke="#ffffff15" stroke-width="1" stroke-dasharray="8,6"/>
+    <line x1="710" y1="50" x2="710" y2="440" stroke="#ffffff15" stroke-width="1" stroke-dasharray="8,6"/>
+
+    <!-- תוויות אזורים למטה -->
+    <text x="105" y="500" text-anchor="middle" fill="#ff9f43" font-size="10">A - פידר</text>
+    <text x="295" y="500" text-anchor="middle" fill="#3498db" font-size="10">B - הובלה</text>
+    <text x="485" y="500" text-anchor="middle" fill="#9b59b6" font-size="10">C - הדבקה</text>
+    <text x="625" y="500" text-anchor="middle" fill="#3498db" font-size="10">B - הובלה</text>
+    <text x="770" y="500" text-anchor="middle" fill="#e94560" font-size="10">D - יציאה</text>
+  </svg>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#ff9f43"></div>פידר</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3498db"></div>הובלה + מנועים</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#9b59b6"></div>ראש הדבקה</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#e94560"></div>חיישנים</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f1c40f"></div>מדבקה</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4ecdc4"></div>כרטיס</div>
+  </div>
+</div>
+</div>
+
+<!-- ==================== מבט על ==================== -->
+<div id="tab-top" class="tab-content">
+<div class="view-card">
+  <div class="view-title">מבט על — TOP VIEW</div>
+  <svg viewBox="0 0 900 350" xmlns="http://www.w3.org/2000/svg">
+    <rect width="900" height="350" fill="#0d1b2a" rx="12"/>
+    <rect width="900" height="350" fill="url(#grid)"/>
+
+    <!-- כיוון תנועה -->
+    <line x1="80" y1="30" x2="780" y2="30" stroke="#00d4ff" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="8,4"/>
+    <text x="430" y="24" text-anchor="middle" fill="#00d4ff" font-size="13">כיוון תנועת הכרטיס →</text>
+
+    <!-- מודול A: פידר -->
+    <rect x="60" y="80" width="120" height="140" rx="8" fill="none" stroke="#ff9f43" stroke-width="2.5"/>
+    <text x="120" y="110" text-anchor="middle" fill="#ff9f43" font-size="13" font-weight="bold">פידר</text>
+    <!-- מחסנית -->
+    <rect x="80" y="120" width="80" height="55" rx="4" fill="#ff9f4320" stroke="#ff9f43" stroke-width="1" stroke-dasharray="4,2"/>
+    <text x="120" y="145" text-anchor="middle" fill="#ff9f43" font-size="9">מחסנית</text>
+    <text x="120" y="158" text-anchor="middle" fill="#ff9f43" font-size="9">כרטיסים</text>
+    <!-- גלגל -->
+    <circle cx="120" cy="195" r="10" fill="#27ae6040" stroke="#27ae60" stroke-width="1.5"/>
+    <text x="120" y="199" text-anchor="middle" fill="#27ae60" font-size="7">M1</text>
+    <!-- S1 -->
+    <circle cx="155" cy="195" r="6" fill="#e94560"/>
+    <text x="155" y="198" text-anchor="middle" fill="#fff" font-size="6">S1</text>
+
+    <!-- מסילה -->
+    <rect x="180" y="130" width="500" height="8" rx="3" fill="#4a5a6a"/>
+    <rect x="180" y="165" width="500" height="8" rx="3" fill="#4a5a6a"/>
+    <text x="310" y="127" text-anchor="middle" fill="#4a5a6a" font-size="9">דופן קבועה</text>
+    <text x="310" y="186" text-anchor="middle" fill="#4a5a6a" font-size="9">דופן מתכווננת ↕</text>
+
+    <!-- כרטיס -->
+    <rect x="350" y="139" width="86" height="25" rx="3" fill="#4ecdc4" stroke="#2ecc71" stroke-width="1.5"/>
+    <text x="393" y="155" text-anchor="middle" fill="#0d1b2a" font-size="9" font-weight="bold">כרטיס 85.6×54</text>
+
+    <!-- רולר R1 -->
+    <rect x="220" y="125" width="8" height="55" rx="3" fill="#3498db50" stroke="#3498db" stroke-width="1.5"/>
+    <text x="224" y="118" text-anchor="middle" fill="#3498db" font-size="8">R1</text>
+
+    <!-- S2 -->
+    <circle cx="465" cy="151" r="6" fill="#e94560"/>
+    <text x="465" y="154" text-anchor="middle" fill="#fff" font-size="6">S2</text>
+
+    <!-- רולר R2 -->
+    <rect x="600" y="125" width="8" height="55" rx="3" fill="#3498db50" stroke="#3498db" stroke-width="1.5"/>
+    <text x="604" y="118" text-anchor="middle" fill="#3498db" font-size="8">R2</text>
+
+    <!-- ראש הדבקה (מלמעלה) -->
+    <rect x="430" y="50" width="100" height="70" rx="8" fill="#9b59b620" stroke="#9b59b6" stroke-width="2" stroke-dasharray="5,3"/>
+    <text x="480" y="75" text-anchor="middle" fill="#9b59b6" font-size="10" font-weight="bold">ראש הדבקה</text>
+    <text x="480" y="90" text-anchor="middle" fill="#9b59b6" font-size="9">(מלמעלה)</text>
+    <line x1="480" y1="120" x2="480" y2="130" stroke="#9b59b6" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+    <!-- מודול D: יציאה -->
+    <rect x="690" y="80" width="120" height="140" rx="8" fill="none" stroke="#e94560" stroke-width="2.5"/>
+    <text x="750" y="110" text-anchor="middle" fill="#e94560" font-size="13" font-weight="bold">יציאה</text>
+    <!-- S3 -->
+    <circle cx="720" cy="151" r="6" fill="#e94560"/>
+    <text x="720" y="154" text-anchor="middle" fill="#fff" font-size="6">S3</text>
+    <!-- מגש -->
+    <rect x="710" y="170" width="80" height="30" rx="4" fill="#2d3a4a50" stroke="#4a5a6a" stroke-width="1"/>
+    <text x="750" y="189" text-anchor="middle" fill="#888" font-size="9">מגש</text>
+
+    <!-- מידות -->
+    <line x1="60" y1="260" x2="810" y2="260" stroke="#00d4ff" stroke-width="1"/>
+    <line x1="60" y1="252" x2="60" y2="268" stroke="#00d4ff" stroke-width="1"/>
+    <line x1="810" y1="252" x2="810" y2="268" stroke="#00d4ff" stroke-width="1"/>
+    <text x="435" y="278" text-anchor="middle" fill="#00d4ff" font-size="12">~320 מ״מ</text>
+
+    <line x1="40" y1="130" x2="40" y2="173" stroke="#00d4ff" stroke-width="1"/>
+    <line x1="32" y1="130" x2="48" y2="130" stroke="#00d4ff" stroke-width="1"/>
+    <line x1="32" y1="173" x2="48" y2="173" stroke="#00d4ff" stroke-width="1"/>
+    <text x="25" y="155" text-anchor="middle" fill="#00d4ff" font-size="9" transform="rotate(-90,25,155)">~140 מ״מ</text>
+  </svg>
+</div>
+</div>
+
+<!-- ==================== מבט חזית ==================== -->
+<div id="tab-front" class="tab-content">
+<div class="view-card">
+  <div class="view-title">מבט חזית — FRONT VIEW (חתך באזור ההדבקה)</div>
+  <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+    <rect width="500" height="500" fill="#0d1b2a" rx="12"/>
+    <rect width="500" height="500" fill="url(#grid)"/>
+
+    <!-- בסיס -->
+    <rect x="80" y="420" width="340" height="16" rx="4" fill="#2d3a4a" stroke="#4a5a6a" stroke-width="1.5"/>
+
+    <!-- דופן שמאל (קבועה) -->
+    <rect x="100" y="260" width="12" height="160" rx="3" fill="#4a5a6a" stroke="#6a7a8a" stroke-width="1.5"/>
+    <text x="85" y="340" text-anchor="middle" fill="#888" font-size="9" transform="rotate(-90,85,340)">דופן קבועה</text>
+
+    <!-- דופן ימין (מתכווננת) -->
+    <rect x="388" y="260" width="12" height="160" rx="3" fill="#4a5a6a" stroke="#6a7a8a" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="420" y="340" text-anchor="middle" fill="#888" font-size="9" transform="rotate(90,420,340)">דופן מתכווננת</text>
+    <!-- חצי כיוון -->
+    <text x="415" y="280" fill="#888" font-size="14">↔</text>
+
+    <!-- מסילה תחתונה -->
+    <rect x="110" y="390" width="280" height="6" rx="2" fill="#4a5a6a"/>
+
+    <!-- כרטיס -->
+    <rect x="125" y="377" width="250" height="12" rx="2" fill="#4ecdc4" stroke="#2ecc71" stroke-width="1.5"/>
+    <text x="250" y="387" text-anchor="middle" fill="#0d1b2a" font-size="9" font-weight="bold">כרטיס (85.6 מ״מ × 0.8 מ״מ)</text>
+
+    <!-- ראש הדבקה -->
+    <rect x="150" y="60" width="200" height="180" rx="10" fill="#9b59b615" stroke="#9b59b6" stroke-width="2"/>
+    <text x="250" y="85" text-anchor="middle" fill="#9b59b6" font-size="12" font-weight="bold">ראש הדבקה</text>
+
+    <!-- גליל מדבקות -->
+    <circle cx="250" cy="140" r="45" fill="#2d1b4e" stroke="#9b59b6" stroke-width="2"/>
+    <circle cx="250" cy="140" r="30" fill="#3d2b5e" stroke="#9b59b6" stroke-width="1"/>
+    <circle cx="250" cy="140" r="6" fill="#4a3570" stroke="#9b59b6" stroke-width="1.5"/>
+    <text x="250" y="143" text-anchor="middle" fill="#ddd" font-size="8">ציר</text>
+
+    <!-- סרט יורד -->
+    <rect x="245" y="185" width="10" height="50" rx="2" fill="#f1c40f50" stroke="#f1c40f" stroke-width="1.5"/>
+
+    <!-- Peel Plate -->
+    <rect x="210" y="235" width="80" height="20" rx="4" fill="#e67e2240" stroke="#e67e22" stroke-width="2"/>
+    <text x="250" y="249" text-anchor="middle" fill="#e67e22" font-size="9" font-weight="bold">PEEL PLATE</text>
+
+    <!-- מדבקה -->
+    <rect x="230" y="260" width="40" height="12" rx="2" fill="#f1c40f" opacity="0.8"/>
+    <text x="250" y="270" text-anchor="middle" fill="#0d1b2a" font-size="7">מדבקה</text>
+
+    <!-- חץ מדבקה לכרטיס -->
+    <line x1="250" y1="272" x2="250" y2="370" stroke="#f1c40f" stroke-width="1.5" stroke-dasharray="5,3"/>
+    <polygon points="245,370 255,370 250,377" fill="#f1c40f"/>
+
+    <!-- רולר לחיצה -->
+    <circle cx="250" cy="410" r="10" fill="#e74c3c30" stroke="#e74c3c" stroke-width="2"/>
+    <text x="250" y="414" text-anchor="middle" fill="#e74c3c" font-size="7">לחיצה</text>
+    <!-- קפיץ -->
+    <path d="M 250 420 Q 246 425 250 430 Q 254 435 250 440" fill="none" stroke="#e74c3c" stroke-width="1.5"/>
+
+    <!-- מידות -->
+    <line x1="112" y1="470" x2="390" y2="470" stroke="#00d4ff" stroke-width="1"/>
+    <line x1="112" y1="462" x2="112" y2="478" stroke="#00d4ff" stroke-width="1"/>
+    <line x1="390" y1="462" x2="390" y2="478" stroke="#00d4ff" stroke-width="1"/>
+    <text x="250" y="488" text-anchor="middle" fill="#00d4ff" font-size="11">~140 מ״מ רוחב</text>
+
+    <line x1="450" y1="60" x2="450" y2="436" stroke="#00d4ff" stroke-width="1"/>
+    <line x1="442" y1="60" x2="458" y2="60" stroke="#00d4ff" stroke-width="1"/>
+    <line x1="442" y1="436" x2="458" y2="436" stroke="#00d4ff" stroke-width="1"/>
+    <text x="468" y="250" text-anchor="middle" fill="#00d4ff" font-size="10" transform="rotate(90,468,250)">~160 מ״מ גובה</text>
+  </svg>
+</div>
+</div>
+
+<!-- ==================== תרשים זרימה ==================== -->
+<div id="tab-flow" class="tab-content">
+<div class="view-card">
+  <div class="view-title">תרשים זרימת עבודה</div>
+  <svg viewBox="0 0 500 820" xmlns="http://www.w3.org/2000/svg">
+    <rect width="500" height="820" fill="#0d1b2a" rx="12"/>
+
+    <!-- START -->
+    <ellipse cx="250" cy="35" rx="60" ry="22" fill="#27ae6030" stroke="#27ae60" stroke-width="2"/>
+    <text x="250" y="40" text-anchor="middle" fill="#27ae60" font-size="13" font-weight="bold">START</text>
+    <line x1="250" y1="57" x2="250" y2="80" stroke="#ccc" stroke-width="1.5"/>
+
+    <!-- S1 check -->
+    <polygon points="250,80 340,120 250,160 160,120" fill="#3498db20" stroke="#3498db" stroke-width="2"/>
+    <text x="250" y="116" text-anchor="middle" fill="#3498db" font-size="11">S1 = יש</text>
+    <text x="250" y="130" text-anchor="middle" fill="#3498db" font-size="11">כרטיס?</text>
+    <!-- לא -->
+    <line x1="340" y1="120" x2="400" y2="120" stroke="#e94560" stroke-width="1.5"/>
+    <rect x="400" y="107" width="60" height="26" rx="6" fill="#e9456020" stroke="#e94560" stroke-width="1.5"/>
+    <text x="430" y="124" text-anchor="middle" fill="#e94560" font-size="10">המתן</text>
+    <text x="370" y="113" fill="#e94560" font-size="9">לא</text>
+    <!-- כן -->
+    <line x1="250" y1="160" x2="250" y2="185" stroke="#27ae60" stroke-width="1.5"/>
+    <text x="265" y="175" fill="#27ae60" font-size="9">כן</text>
+
+    <!-- M1 הוצא כרטיס -->
+    <rect x="175" y="185" width="150" height="40" rx="8" fill="#ff9f4320" stroke="#ff9f43" stroke-width="2"/>
+    <text x="250" y="205" text-anchor="middle" fill="#ff9f43" font-size="11">M1 → הוצא כרטיס</text>
+    <text x="250" y="218" text-anchor="middle" fill="#ff9f43" font-size="9">מהפידר</text>
+    <line x1="250" y1="225" x2="250" y2="250" stroke="#ccc" stroke-width="1.5"/>
+
+    <!-- M2 הובלה -->
+    <rect x="175" y="250" width="150" height="40" rx="8" fill="#3498db20" stroke="#3498db" stroke-width="2"/>
+    <text x="250" y="270" text-anchor="middle" fill="#3498db" font-size="11">M2 → הובל כרטיס</text>
+    <text x="250" y="283" text-anchor="middle" fill="#3498db" font-size="9">במסילה</text>
+    <line x1="250" y1="290" x2="250" y2="315" stroke="#ccc" stroke-width="1.5"/>
+
+    <!-- S2 check -->
+    <polygon points="250,315 340,355 250,395 160,355" fill="#e9456020" stroke="#e94560" stroke-width="2"/>
+    <text x="250" y="351" text-anchor="middle" fill="#e94560" font-size="11">S2 = הגיע</text>
+    <text x="250" y="365" text-anchor="middle" fill="#e94560" font-size="11">לאזור?</text>
+    <!-- לא -->
+    <line x1="340" y1="355" x2="400" y2="355" stroke="#888" stroke-width="1.5"/>
+    <text x="420" y="359" fill="#888" font-size="9">המשך M2</text>
+    <text x="370" y="348" fill="#888" font-size="9">לא</text>
+    <!-- כן -->
+    <line x1="250" y1="395" x2="250" y2="420" stroke="#27ae60" stroke-width="1.5"/>
+    <text x="265" y="410" fill="#27ae60" font-size="9">כן</text>
+
+    <!-- עצור -->
+    <rect x="175" y="420" width="150" height="35" rx="8" fill="#e74c3c20" stroke="#e74c3c" stroke-width="2"/>
+    <text x="250" y="442" text-anchor="middle" fill="#e74c3c" font-size="11">עצור M2 (כרטיס במרכז)</text>
+    <line x1="250" y1="455" x2="250" y2="480" stroke="#ccc" stroke-width="1.5"/>
+
+    <!-- M3 מדבקה -->
+    <rect x="175" y="480" width="150" height="40" rx="8" fill="#9b59b620" stroke="#9b59b6" stroke-width="2"/>
+    <text x="250" y="500" text-anchor="middle" fill="#9b59b6" font-size="11">M3 → קדם מדבקה</text>
+    <text x="250" y="513" text-anchor="middle" fill="#9b59b6" font-size="9">מתקלפת ב-Peel Plate</text>
+    <line x1="250" y1="520" x2="250" y2="545" stroke="#ccc" stroke-width="1.5"/>
+
+    <!-- רולר לחיצה -->
+    <rect x="175" y="545" width="150" height="40" rx="8" fill="#f1c40f20" stroke="#f1c40f" stroke-width="2"/>
+    <text x="250" y="565" text-anchor="middle" fill="#f1c40f" font-size="11">רולר לחיצה</text>
+    <text x="250" y="578" text-anchor="middle" fill="#f1c40f" font-size="9">מצמיד מדבקה</text>
+    <line x1="250" y1="585" x2="250" y2="610" stroke="#ccc" stroke-width="1.5"/>
+
+    <!-- המשך M2 -->
+    <rect x="175" y="610" width="150" height="35" rx="8" fill="#3498db20" stroke="#3498db" stroke-width="2"/>
+    <text x="250" y="632" text-anchor="middle" fill="#3498db" font-size="11">M2 → המשך הובלה</text>
+    <line x1="250" y1="645" x2="250" y2="670" stroke="#ccc" stroke-width="1.5"/>
+
+    <!-- S3 check -->
+    <polygon points="250,670 330,700 250,730 170,700" fill="#e9456020" stroke="#e94560" stroke-width="2"/>
+    <text x="250" y="696" text-anchor="middle" fill="#e94560" font-size="11">S3 = יצא</text>
+    <text x="250" y="710" text-anchor="middle" fill="#e94560" font-size="11">הכרטיס?</text>
+    <!-- כן -->
+    <line x1="250" y1="730" x2="250" y2="760" stroke="#27ae60" stroke-width="1.5"/>
+    <text x="265" y="748" fill="#27ae60" font-size="9">כן</text>
+
+    <!-- DONE -->
+    <ellipse cx="250" cy="785" rx="60" ry="22" fill="#27ae6030" stroke="#27ae60" stroke-width="2"/>
+    <text x="250" y="790" text-anchor="middle" fill="#27ae60" font-size="12" font-weight="bold">סוף מחזור</text>
+
+    <!-- חץ חזרה -->
+    <path d="M 190 785 Q 60 785 60 400 Q 60 35 190 35" fill="none" stroke="#00d4ff55" stroke-width="1.5" stroke-dasharray="6,4"/>
+    <text x="46" y="400" fill="#00d4ff" font-size="9" transform="rotate(-90,46,400)">מחזור חדש</text>
+  </svg>
+</div>
+</div>
+
+<!-- ==================== רכיבים ==================== -->
+<div id="tab-specs" class="tab-content">
+<div class="view-card">
+  <div class="view-title">פירוט רכיבים</div>
+  <div class="specs-grid">
+
+    <div class="spec-box">
+      <h3>🔧 מנועים</h3>
+      <ul>
+        <li><strong>M1</strong> — פידר כרטיסים (NEMA17, 24V)</li>
+        <li><strong>M2</strong> — הובלת כרטיס (NEMA17, 24V)</li>
+        <li><strong>M3</strong> — קידום מדבקות (NEMA17, 24V)</li>
+      </ul>
+    </div>
+
+    <div class="spec-box">
+      <h3>📡 חיישנים</h3>
+      <ul>
+        <li><strong>S1</strong> — פידר — זיהוי כרטיס</li>
+        <li><strong>S2</strong> — אזור הדבקה — טריגר</li>
+        <li><strong>S3</strong> — יציאה — סוף מחזור</li>
+      </ul>
+    </div>
+
+    <div class="spec-box">
+      <h3>🧠 אלקטרוניקה</h3>
+      <ul>
+        <li>Arduino Mega</li>
+        <li>3× TMC2209 (דרייבר מנוע)</li>
+        <li>ספק 24V / 10A</li>
+        <li>ממיר 24V→5V (LM2596)</li>
+      </ul>
+    </div>
+
+    <div class="spec-box">
+      <h3>📐 מידות כלליות</h3>
+      <ul>
+        <li>אורך: ~320 מ״מ</li>
+        <li>רוחב: ~140 מ״מ</li>
+        <li>גובה: ~160 מ״מ</li>
+        <li>כרטיס: 85.6×54×0.8 מ״מ</li>
+      </ul>
+    </div>
+
+    <div class="spec-box">
+      <h3>🖨️ הדפסה תלת-ממד</h3>
+      <ul>
+        <li>חומר: PETG</li>
+        <li>שכבה: 0.2 מ״מ</li>
+        <li>דפנות: 4</li>
+        <li>מילוי: 30-40%</li>
+        <li>~12-15 חלקים מודפסים</li>
+      </ul>
+    </div>
+
+    <div class="spec-box">
+      <h3>🛒 חלקים קנויים</h3>
+      <ul>
+        <li>מיסבים 608 × 6</li>
+        <li>צירים 8 מ״מ × 3</li>
+        <li>ברגי M3/M4 × ~40</li>
+        <li>קפיצים × 2</li>
+        <li>אינסרטים מושחלים</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <h3 style="color:#00d4ff;margin-top:20px">❓ שאלות פתוחות לשלב הבא</h3>
+  <div class="specs-grid" style="margin-top:8px">
+    <div class="spec-box">
+      <ul>
+        <li>1. גודל המדבקה? (למשל 20×15 מ״מ)</li>
+        <li>2. קוטר גליל מדבקות?</li>
+        <li>3. רוחב סרט מדבקות?</li>
+      </ul>
+    </div>
+    <div class="spec-box">
+      <ul>
+        <li>4. קצב עבודה נדרש? (כרטיסים/דקה)</li>
+        <li>5. סוג חיישנים? (אופטי/מכני)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

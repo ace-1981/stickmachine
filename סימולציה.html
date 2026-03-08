@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מכונת מדבקות — סימולציה אינטראקטיבית</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0e1a;color:#e0e0e0;overflow-x:hidden}
+.header{background:#16213e;padding:12px 20px;text-align:center;border-bottom:2px solid #e94560}
+h1{color:#00d4ff;font-size:1.3em;margin-bottom:2px}
+.subtitle{color:#888;font-size:0.8em}
+.main{display:flex;flex-direction:column;align-items:center;padding:10px}
+.sim-container{position:relative;width:100%;max-width:1000px;background:#0d1b2a;border-radius:16px;border:1px solid #1a3a6a;overflow:hidden;margin-bottom:12px}
+svg.machine{width:100%;height:auto;display:block}
+
+/* Controls */
+.controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
+.btn{padding:10px 22px;border:none;border-radius:10px;font-size:0.95em;font-family:inherit;cursor:pointer;font-weight:bold;transition:all .15s}
+.btn-start{background:#2ecc71;color:#fff}
+.btn-start:hover{background:#27ae60}
+.btn-start.running{background:#e74c3c}
+.btn-start.running:hover{background:#c0392b}
+.btn-step{background:#3498db;color:#fff}
+.btn-step:hover{background:#2980b9}
+.btn-reset{background:#95a5a6;color:#fff}
+.btn-reset:hover{background:#7f8c8d}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+
+.speed-control{display:flex;align-items:center;gap:8px;background:#16213e;padding:8px 16px;border-radius:10px}
+.speed-control label{color:#888;font-size:0.85em}
+.speed-control input[type=range]{width:120px;accent-color:#e94560}
+.speed-val{color:#00d4ff;font-weight:bold;min-width:35px;text-align:center}
+
+/* Status Bar */
+.status-bar{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
+.status-item{background:#16213e;padding:8px 14px;border-radius:10px;border:1px solid #1a3a6a;min-width:120px;text-align:center}
+.status-label{color:#888;font-size:0.75em;display:block}
+.status-value{color:#00d4ff;font-weight:bold;font-size:1.1em}
+.status-value.state{color:#e94560}
+
+/* Sensor indicators */
+.sensor-panel{display:flex;gap:10px;justify-content:center;margin-bottom:12px}
+.sensor-ind{display:flex;align-items:center;gap:6px;background:#16213e;padding:6px 14px;border-radius:8px;border:1px solid #1a3a6a}
+.sensor-dot{width:14px;height:14px;border-radius:50%;background:#333;border:2px solid #555;transition:all .2s}
+.sensor-dot.active{background:#e94560;border-color:#e94560;box-shadow:0 0 10px #e94560}
+.sensor-name{color:#888;font-size:0.8em}
+
+/* Log */
+.log-container{width:100%;max-width:1000px;background:#16213e;border-radius:12px;border:1px solid #1a3a6a;padding:10px;max-height:150px;overflow-y:auto;font-family:'Consolas',monospace;font-size:0.78em;direction:ltr;text-align:left}
+.log-line{padding:2px 0;border-bottom:1px solid #0f346033}
+.log-line .time{color:#555}
+.log-line .msg{color:#ccc}
+.log-line .state{color:#e94560;font-weight:bold}
+.log-line .ok{color:#2ecc71}
+.log-line .warn{color:#f39c12}
+
+/* Magazine stack */
+.card-stack{fill:#4ecdc4;opacity:0.3;stroke:#4ecdc4;stroke-width:0.5}
+
+@media(max-width:700px){
+  .controls{gap:6px}
+  .btn{padding:8px 14px;font-size:0.85em}
+  .status-bar{gap:6px}
+  .status-item{min-width:80px;padding:6px 8px}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>סימולציה אינטראקטיבית — מכונת הדבקת מדבקות</h1>
+  <div class="subtitle">Credit Card Sticker Labeling Machine Simulation</div>
+</div>
+
+<div class="main">
+
+<!-- Controls -->
+<div class="controls">
+  <button class="btn btn-start" id="btnStart" onclick="toggleRun()">▶ הפעל</button>
+  <button class="btn btn-step" id="btnStep" onclick="stepOnce()">⏭ מחזור בודד</button>
+  <button class="btn btn-reset" onclick="resetMachine()">↺ איפוס</button>
+  <div class="speed-control">
+    <label>מהירות:</label>
+    <input type="range" id="speedSlider" min="1" max="10" value="5" oninput="updateSpeed()">
+    <span class="speed-val" id="speedVal">5×</span>
+  </div>
+</div>
+
+<!-- Sensors -->
+<div class="sensor-panel">
+  <div class="sensor-ind"><div class="sensor-dot" id="s1dot"></div><span class="sensor-name">S1 פידר</span></div>
+  <div class="sensor-ind"><div class="sensor-dot" id="s2dot"></div><span class="sensor-name">S2 הדבקה</span></div>
+  <div class="sensor-ind"><div class="sensor-dot" id="s3dot"></div><span class="sensor-name">S3 יציאה</span></div>
+</div>
+
+<!-- Status -->
+<div class="status-bar">
+  <div class="status-item"><span class="status-label">מצב</span><span class="status-value state" id="stState">IDLE</span></div>
+  <div class="status-item"><span class="status-label">מחזורים</span><span class="status-value" id="stCycles">0</span></div>
+  <div class="status-item"><span class="status-label">כרטיסים במחסנית</span><span class="status-value" id="stCards">12</span></div>
+  <div class="status-item"><span class="status-label">זמן מחזור</span><span class="status-value" id="stTime">—</span></div>
+  <div class="status-item"><span class="status-label">מנוע M1</span><span class="status-value" id="stM1">⏸</span></div>
+  <div class="status-item"><span class="status-label">מנוע M2</span><span class="status-value" id="stM2">⏸</span></div>
+  <div class="status-item"><span class="status-label">מנוע M3</span><span class="status-value" id="stM3">⏸</span></div>
+</div>
+
+<!-- Machine SVG -->
+<div class="sim-container">
+<svg class="machine" viewBox="0 0 1000 420" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1000" height="420" fill="#0d1b2a"/>
+
+  <!-- ===== Background grid ===== -->
+  <defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#111827" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arw" markerWidth="6" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0,6 2.5,0 5" fill="#888"/>
+    </marker>
+    <!-- Label on roll pattern -->
+    <pattern id="labelPat" width="8" height="30" patternUnits="userSpaceOnUse">
+      <rect width="8" height="28" fill="#e94560" opacity="0.3"/>
+      <rect y="28" width="8" height="2" fill="#16213e"/>
+    </pattern>
+  </defs>
+  <rect width="1000" height="420" fill="url(#grid)"/>
+
+  <!-- ===== Module Labels ===== -->
+  <text x="100" y="20" text-anchor="middle" fill="#3498db" font-size="11" font-weight="bold" opacity="0.6">A — פידר</text>
+  <text x="370" y="20" text-anchor="middle" fill="#9b59b6" font-size="11" font-weight="bold" opacity="0.6">B — מסילה</text>
+  <text x="640" y="20" text-anchor="middle" fill="#e94560" font-size="11" font-weight="bold" opacity="0.6">C — הדבקה</text>
+  <text x="870" y="20" text-anchor="middle" fill="#2ecc71" font-size="11" font-weight="bold" opacity="0.6">D — יציאה</text>
+
+  <!-- ===== Rail / Conveyor base ===== -->
+  <rect x="50" y="260" width="850" height="6" rx="2" fill="#1a3a6a"/>
+  <rect x="50" y="230" width="850" height="4" rx="1" fill="#1a3a6a" opacity="0.5"/>
+  <!-- Rail surface -->
+  <line x1="50" y1="260" x2="900" y2="260" stroke="#2a4a7a" stroke-width="1"/>
+
+  <!-- ===== Feeder Module ===== -->
+  <!-- Magazine walls -->
+  <rect x="30" y="100" width="5" height="160" rx="1" fill="#3498db" opacity="0.6"/>
+  <rect x="165" y="100" width="5" height="160" rx="1" fill="#3498db" opacity="0.6"/>
+  <rect x="30" y="95" width="140" height="5" rx="1" fill="#3498db" opacity="0.3"/>
+
+  <!-- Card stack in magazine -->
+  <g id="cardStack">
+    <!-- Cards will be drawn by JS -->
+  </g>
+
+  <!-- Feed wheel (M1) -->
+  <g id="feedWheelGroup">
+    <circle cx="100" cy="268" r="14" fill="#1a2a4a" stroke="#e67e22" stroke-width="2" id="feedWheel"/>
+    <line x1="100" y1="254" x2="100" y2="282" stroke="#e67e22" stroke-width="1.5" id="feedWheelLine"/>
+  </g>
+  <!-- M1 motor -->
+  <rect x="75" y="280" width="50" height="40" rx="4" fill="#16213e" stroke="#3498db" stroke-width="1.5"/>
+  <text x="100" y="305" text-anchor="middle" fill="#3498db" font-size="9" font-weight="bold">M1</text>
+
+  <!-- S1 Sensor -->
+  <g id="s1group">
+    <rect x="140" y="245" width="8" height="18" rx="2" fill="#16213e" stroke="#e94560" stroke-width="1.5" id="s1body"/>
+    <circle cx="144" cy="254" r="3" fill="#333" id="s1light"/>
+  </g>
+
+  <!-- ===== Transport Rollers ===== -->
+  <!-- Roller 1 -->
+  <circle cx="250" cy="255" r="14" fill="#1a2a4a" stroke="#9b59b6" stroke-width="1.5" id="roller1"/>
+  
+  <!-- Roller 2 (drive — M2) -->
+  <g id="transportWheelGroup">
+    <circle cx="450" cy="255" r="14" fill="#1a2a4a" stroke="#9b59b6" stroke-width="2" id="transportWheel"/>
+    <line x1="450" y1="241" x2="450" y2="269" stroke="#9b59b6" stroke-width="1.5" id="transportWheelLine"/>
+  </g>
+  <!-- M2 motor -->
+  <rect x="425" y="280" width="50" height="40" rx="4" fill="#16213e" stroke="#9b59b6" stroke-width="1.5"/>
+  <text x="450" y="305" text-anchor="middle" fill="#9b59b6" font-size="9" font-weight="bold">M2</text>
+
+  <!-- Roller 3 -->
+  <circle cx="550" cy="255" r="14" fill="#1a2a4a" stroke="#9b59b6" stroke-width="1.5" id="roller3"/>
+
+  <!-- S2 Sensor -->
+  <g id="s2group">
+    <rect x="575" y="245" width="8" height="18" rx="2" fill="#16213e" stroke="#e94560" stroke-width="1.5" id="s2body"/>
+    <circle cx="579" cy="254" r="3" fill="#333" id="s2light"/>
+  </g>
+
+  <!-- ===== Label Head Module ===== -->
+  <!-- Label roll -->
+  <g id="labelRollGroup">
+    <circle cx="660" cy="120" r="60" fill="none" stroke="#e94560" stroke-width="1" opacity="0.3"/>
+    <circle cx="660" cy="120" r="45" fill="url(#labelPat)" stroke="#e94560" stroke-width="1.5" id="labelRollOuter"/>
+    <circle cx="660" cy="120" r="20" fill="#16213e" stroke="#e94560" stroke-width="1.5"/>
+    <circle cx="660" cy="120" r="4" fill="#e94560" opacity="0.5"/>
+    <line x1="660" y1="100" x2="660" y2="140" stroke="#e94560" stroke-width="1" id="rollSpinLine" opacity="0.5"/>
+  </g>
+
+  <!-- M3 motor -->
+  <rect x="615" y="90" width="35" height="30" rx="4" fill="#16213e" stroke="#e67e22" stroke-width="1.5"/>
+  <text x="632" y="110" text-anchor="middle" fill="#e67e22" font-size="8" font-weight="bold">M3</text>
+
+  <!-- Label strip path (from roll to peel plate) -->
+  <path d="M 660 165 L 660 210 L 680 235 L 700 250" fill="none" stroke="#e94560" stroke-width="3" opacity="0.4" id="labelStripPath"/>
+  
+  <!-- Peel plate -->
+  <g id="peelPlateGroup">
+    <line x1="690" y1="248" x2="720" y2="258" stroke="#f1c40f" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="720" cy="258" r="2" fill="#f1c40f"/>
+  </g>
+
+  <!-- Pressure roller -->
+  <circle cx="710" cy="245" r="10" fill="#1a2a4a" stroke="#e67e22" stroke-width="2" id="pressureRoller"/>
+  
+  <!-- Liner return path -->
+  <path d="M 720 258 L 740 270 L 740 320 L 700 340 L 660 320" fill="none" stroke="#888" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.4"/>
+  <!-- Liner take-up spool -->
+  <circle cx="660" cy="330" r="18" fill="#16213e" stroke="#888" stroke-width="1.5" opacity="0.5"/>
+  <text x="660" y="334" text-anchor="middle" fill="#888" font-size="7">Liner</text>
+
+  <!-- ===== Exit Module ===== -->
+  <!-- Exit tray (angled) -->
+  <polygon points="800,260 950,260 960,290 810,260" fill="#2ecc7115" stroke="#2ecc71" stroke-width="1.5"/>
+
+  <!-- S3 Sensor -->
+  <g id="s3group">
+    <rect x="830" y="245" width="8" height="18" rx="2" fill="#16213e" stroke="#e94560" stroke-width="1.5" id="s3body"/>
+    <circle cx="834" cy="254" r="3" fill="#333" id="s3light"/>
+  </g>
+
+  <!-- Roller 4 (exit) -->
+  <circle cx="790" cy="255" r="14" fill="#1a2a4a" stroke="#2ecc71" stroke-width="1.5" id="roller4"/>
+
+  <!-- ===== Active Card (animated) ===== -->
+  <g id="activeCard" visibility="hidden">
+    <rect x="0" y="248" width="86" height="8" rx="2" fill="#4ecdc4" stroke="#4ecdc4" stroke-width="0.5" opacity="0.9" id="cardRect"/>
+    <!-- Sticker on card (appears during labeling) -->
+    <rect x="29" y="249" width="28" height="6" rx="1" fill="#e94560" opacity="0" id="stickerOnCard"/>
+  </g>
+
+  <!-- ===== Sticker being peeled (animation) ===== -->
+  <rect x="700" y="249" width="0" height="6" rx="1" fill="#e94560" opacity="0" id="stickerPeeling"/>
+
+  <!-- ===== Exit cards (done) ===== -->
+  <g id="exitCards">
+    <!-- Finished cards accumulate here -->
+  </g>
+
+  <!-- ===== Labels ===== -->
+  <text x="100" y="390" text-anchor="middle" fill="#3498db" font-size="9" opacity="0.5">פידר</text>
+  <text x="450" y="390" text-anchor="middle" fill="#9b59b6" font-size="9" opacity="0.5">הובלה</text>
+  <text x="660" y="390" text-anchor="middle" fill="#e94560" font-size="9" opacity="0.5">הדבקה</text>
+  <text x="870" y="390" text-anchor="middle" fill="#2ecc71" font-size="9" opacity="0.5">יציאה</text>
+
+  <!-- Direction arrow -->
+  <line x1="50" y1="405" x2="900" y2="405" stroke="#444" stroke-width="1" marker-end="url(#arw)"/>
+  <text x="475" y="415" text-anchor="middle" fill="#555" font-size="9">כיוון תנועת הכרטיס →</text>
+
+</svg>
+</div>
+
+<!-- Log -->
+<div class="log-container" id="logBox">
+  <div class="log-line"><span class="time">[00:00.000]</span> <span class="ok">System Ready</span> — <span class="msg">הכנס כרטיסים ולחץ הפעל</span></div>
+</div>
+
+</div>
+
+<script>
+// ============================================================
+//  Simulation Engine
+// ============================================================
+
+const SIM = {
+  // Machine geometry (SVG coordinates)
+  CARD_WIDTH: 86,
+  CARD_Y: 248,
+  
+  // Key X positions
+  FEEDER_X: 55,         // card start in magazine
+  FEED_END_X: 175,      // after feed push
+  S2_X: 575,            // S2 sensor position
+  LABEL_START_X: 620,   // where labeling begins
+  LABEL_END_X: 648,     // label complete (28mm scaled)
+  S3_X: 830,            // S3 sensor position
+  EXIT_X: 950,          // card exits frame
+  
+  // Sensor positions (card leading edge triggers)
+  S1_CHECK_X: 140,
+  S2_CHECK_X: 575,
+  S3_CHECK_X: 830,
+  
+  // Animation
+  PIXELS_PER_FRAME: 2,  // base speed
+  speed: 5,
+  
+  // State
+  state: 'IDLE',
+  running: false,
+  singleCycle: false,
+  cardX: 55,
+  cardVisible: false,
+  cardsInMagazine: 12,
+  cycleCount: 0,
+  cycleStartTime: 0,
+  frameCount: 0,
+  
+  // Motor states
+  m1Running: false,
+  m2Running: false,
+  m3Running: false,
+  
+  // Sensor states
+  s1: false,
+  s2: false,
+  s3: false,
+  
+  // Label 
+  labelProgress: 0,   // 0 to 1
+  stickerApplied: false,
+  
+  // Wheel rotation
+  feedWheelAngle: 0,
+  transportWheelAngle: 0,
+  rollAngle: 0,
+  
+  // Exit cards
+  exitCardCount: 0,
+  
+  // Timing
+  stateStartFrame: 0,
+  lastStateChange: 0,
+};
+
+let animId = null;
+let startTime = Date.now();
+
+// ============================================================
+//  DOM Elements
+// ============================================================
+
+const $ = id => document.getElementById(id);
+
+const els = {
+  activeCard: null,
+  cardRect: null,
+  stickerOnCard: null,
+  stickerPeeling: null,
+  feedWheel: null,
+  feedWheelLine: null,
+  transportWheel: null,
+  transportWheelLine: null,
+  rollSpinLine: null,
+  s1light: null, s2light: null, s3light: null,
+  cardStack: null,
+  exitCards: null,
+};
+
+function initEls() {
+  els.activeCard = $('activeCard');
+  els.cardRect = $('cardRect');
+  els.stickerOnCard = $('stickerOnCard');
+  els.stickerPeeling = $('stickerPeeling');
+  els.feedWheel = $('feedWheel');
+  els.feedWheelLine = $('feedWheelLine');
+  els.transportWheel = $('transportWheel');
+  els.transportWheelLine = $('transportWheelLine');
+  els.rollSpinLine = $('rollSpinLine');
+  els.s1light = $('s1light');
+  els.s2light = $('s2light');
+  els.s3light = $('s3light');
+  els.cardStack = $('cardStack');
+  els.exitCards = $('exitCards');
+}
+
+// ============================================================
+//  Card Stack Drawing
+// ============================================================
+
+function drawCardStack() {
+  let html = '';
+  const n = SIM.cardsInMagazine;
+  const baseY = 252;
+  for (let i = 0; i < Math.min(n, 20); i++) {
+    const y = baseY - (i+1) * 4;
+    const opacity = 0.15 + (i/20) * 0.35;
+    html += `<rect x="38" y="${y}" width="124" height="3" rx="1" fill="#4ecdc4" opacity="${opacity}"/>`;
+  }
+  if (n > 0) {
+    // Top card (brighter)
+    const topY = baseY - n * 4;
+    html += `<rect x="38" y="${topY}" width="124" height="4" rx="1" fill="#4ecdc4" opacity="0.7" stroke="#4ecdc4" stroke-width="0.5"/>`;
+  }
+  els.cardStack.innerHTML = html;
+  $('stCards').textContent = n;
+}
+
+// ============================================================
+//  Exit Cards Drawing
+// ============================================================
+
+function drawExitCard() {
+  const i = SIM.exitCardCount;
+  const x = 850 + (i % 5) * 3;
+  const y = 252 - (i % 5) * 3;
+  const el = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  el.innerHTML = `
+    <rect x="${x}" y="${y}" width="70" height="7" rx="1.5" fill="#4ecdc4" opacity="0.5"/>
+    <rect x="${x+24}" y="${y+1}" width="22" height="5" rx="0.5" fill="#e94560" opacity="0.6"/>
+  `;
+  els.exitCards.appendChild(el);
+  SIM.exitCardCount++;
+  if (SIM.exitCardCount > 8) {
+    // Clear oldest
+    if (els.exitCards.firstChild) els.exitCards.removeChild(els.exitCards.firstChild);
+  }
+}
+
+// ============================================================
+//  Sensors Update
+// ============================================================
+
+function updateSensors() {
+  if (!SIM.cardVisible) {
+    SIM.s1 = SIM.cardsInMagazine > 0;
+    SIM.s2 = false;
+    SIM.s3 = false;
+  } else {
+    const leading = SIM.cardX + SIM.CARD_WIDTH;
+    const trailing = SIM.cardX;
+    SIM.s1 = SIM.cardsInMagazine > 0;
+    SIM.s2 = (leading >= SIM.S2_CHECK_X && trailing <= SIM.S2_CHECK_X + 20);
+    SIM.s3 = (leading >= SIM.S3_CHECK_X && trailing <= SIM.S3_CHECK_X + 50);
+  }
+  
+  els.s1light.setAttribute('fill', SIM.s1 ? '#e94560' : '#333');
+  els.s2light.setAttribute('fill', SIM.s2 ? '#e94560' : '#333');
+  els.s3light.setAttribute('fill', SIM.s3 ? '#e94560' : '#333');
+  $('s1dot').className = 'sensor-dot' + (SIM.s1 ? ' active' : '');
+  $('s2dot').className = 'sensor-dot' + (SIM.s2 ? ' active' : '');
+  $('s3dot').className = 'sensor-dot' + (SIM.s3 ? ' active' : '');
+}
+
+// ============================================================
+//  Motor Animations
+// ============================================================
+
+function animateMotors() {
+  const spd = SIM.speed * 0.5;
+  
+  if (SIM.m1Running) {
+    SIM.feedWheelAngle += 5 * spd;
+    els.feedWheelLine.setAttribute('transform', `rotate(${SIM.feedWheelAngle}, 100, 268)`);
+    $('stM1').textContent = '▶';
+    $('stM1').style.color = '#2ecc71';
+  } else {
+    $('stM1').textContent = '⏸';
+    $('stM1').style.color = '#888';
+  }
+  
+  if (SIM.m2Running) {
+    SIM.transportWheelAngle += 5 * spd;
+    els.transportWheelLine.setAttribute('transform', `rotate(${SIM.transportWheelAngle}, 450, 255)`);
+    // Also spin other rollers
+    $('roller1').setAttribute('transform', `rotate(${SIM.transportWheelAngle}, 250, 255)`);
+    $('roller3').setAttribute('transform', `rotate(${SIM.transportWheelAngle}, 550, 255)`);
+    $('roller4').setAttribute('transform', `rotate(${SIM.transportWheelAngle}, 790, 255)`);
+    $('stM2').textContent = '▶';
+    $('stM2').style.color = '#2ecc71';
+  } else {
+    $('stM2').textContent = '⏸';
+    $('stM2').style.color = '#888';
+  }
+  
+  if (SIM.m3Running) {
+    SIM.rollAngle += 3 * spd;
+    els.rollSpinLine.setAttribute('transform', `rotate(${SIM.rollAngle}, 660, 120)`);
+    $('stM3').textContent = '▶';
+    $('stM3').style.color = '#2ecc71';
+  } else {
+    $('stM3').textContent = '⏸';
+    $('stM3').style.color = '#888';
+  }
+  
+  // Pressure roller spins with card
+  if (SIM.m2Running || SIM.m3Running) {
+    $('pressureRoller').setAttribute('transform', `rotate(${SIM.transportWheelAngle * 0.7}, 710, 245)`);
+  }
+}
+
+// ============================================================
+//  Card Position Update
+// ============================================================
+
+function updateCardPosition() {
+  if (!SIM.cardVisible) {
+    els.activeCard.setAttribute('visibility', 'hidden');
+    return;
+  }
+  els.activeCard.setAttribute('visibility', 'visible');
+  els.cardRect.setAttribute('x', SIM.cardX);
+  
+  // Sticker on card
+  if (SIM.stickerApplied) {
+    els.stickerOnCard.setAttribute('x', SIM.cardX + 29);
+    els.stickerOnCard.setAttribute('opacity', '0.8');
+  } else if (SIM.labelProgress > 0) {
+    const stickerW = 28 * SIM.labelProgress;
+    els.stickerOnCard.setAttribute('x', SIM.cardX + 29);
+    els.stickerOnCard.setAttribute('width', stickerW);
+    els.stickerOnCard.setAttribute('opacity', '0.8');
+  } else {
+    els.stickerOnCard.setAttribute('opacity', '0');
+  }
+}
+
+// ============================================================
+//  State Machine
+// ============================================================
+
+function changeState(newState) {
+  SIM.state = newState;
+  SIM.stateStartFrame = SIM.frameCount;
+  SIM.lastStateChange = Date.now();
+  $('stState').textContent = newState;
+  
+  // Log
+  addLog(newState, 'state');
+}
+
+function tick() {
+  SIM.frameCount++;
+  const spd = SIM.speed * SIM.PIXELS_PER_FRAME * 0.4;
+  
+  switch (SIM.state) {
+    case 'IDLE':
+      SIM.m1Running = false;
+      SIM.m2Running = false;
+      SIM.m3Running = false;
+      
+      if (SIM.cardsInMagazine > 0 && (SIM.running || SIM.singleCycle)) {
+        // Start cycle
+        SIM.cycleStartTime = Date.now();
+        SIM.cardsInMagazine--;
+        drawCardStack();
+        
+        // Show card at feeder position
+        SIM.cardX = SIM.FEEDER_X;
+        SIM.cardVisible = true;
+        SIM.stickerApplied = false;
+        SIM.labelProgress = 0;
+        els.stickerOnCard.setAttribute('width', '28');
+        els.stickerOnCard.setAttribute('opacity', '0');
+        els.stickerPeeling.setAttribute('opacity', '0');
+        
+        changeState('FEEDING');
+        addLog('כרטיס זוהה בפידר', 'ok');
+      }
+      break;
+    
+    case 'FEEDING':
+      SIM.m1Running = true;
+      SIM.m2Running = false;
+      SIM.m3Running = false;
+      
+      SIM.cardX += spd * 0.8;
+      
+      if (SIM.cardX >= SIM.FEED_END_X) {
+        SIM.cardX = SIM.FEED_END_X;
+        SIM.m1Running = false;
+        changeState('TRANSPORT');
+        addLog('כרטיס על המסילה', 'ok');
+      }
+      break;
+      
+    case 'TRANSPORT':
+      SIM.m1Running = false;
+      SIM.m2Running = true;
+      SIM.m3Running = false;
+      
+      SIM.cardX += spd;
+      
+      // Check S2
+      if (SIM.cardX + SIM.CARD_WIDTH >= SIM.S2_CHECK_X) {
+        changeState('LABEL_OFFSET');
+        addLog('S2 — כרטיס זוהה באזור ההדבקה', 'warn');
+      }
+      break;
+      
+    case 'LABEL_OFFSET':
+      SIM.m2Running = true;
+      SIM.m3Running = false;
+      
+      SIM.cardX += spd;
+      
+      // Wait until card reaches label position
+      if (SIM.cardX >= SIM.LABEL_START_X) {
+        changeState('LABELING');
+        addLog('★ מתחיל הדבקה!', 'state');
+      }
+      break;
+      
+    case 'LABELING':
+      SIM.m2Running = true;
+      SIM.m3Running = true;
+      
+      SIM.cardX += spd;
+      
+      // Progress label
+      const labelFrames = 28 / spd;  // frames needed for sticker length
+      SIM.labelProgress += 1 / labelFrames;
+      
+      if (SIM.labelProgress >= 1) {
+        SIM.labelProgress = 1;
+        SIM.stickerApplied = true;
+        SIM.m3Running = false;
+        addLog('הדבקה הושלמה!', 'ok');
+        changeState('EXIT_TRANSPORT');
+      }
+      
+      // Peeling animation
+      const pw = 28 * SIM.labelProgress;
+      els.stickerPeeling.setAttribute('width', Math.max(0, 28 - pw));
+      els.stickerPeeling.setAttribute('x', 695 + pw);
+      els.stickerPeeling.setAttribute('opacity', SIM.labelProgress < 1 ? '0.6' : '0');
+      break;
+    
+    case 'EXIT_TRANSPORT':
+      SIM.m2Running = true;
+      SIM.m3Running = false;
+      
+      SIM.cardX += spd;
+      
+      // Check S3
+      if (SIM.cardX + SIM.CARD_WIDTH >= SIM.S3_CHECK_X) {
+        addLog('S3 — כרטיס ביציאה', 'warn');
+        changeState('EXIT');
+      }
+      break;
+      
+    case 'EXIT':
+      SIM.m2Running = true;
+      
+      SIM.cardX += spd;
+      
+      if (SIM.cardX >= SIM.EXIT_X) {
+        // Cycle complete!
+        SIM.cardVisible = false;
+        SIM.m2Running = false;
+        SIM.cycleCount++;
+        $('stCycles').textContent = SIM.cycleCount;
+        
+        // Calculate cycle time
+        const elapsed = (Date.now() - SIM.cycleStartTime) / 1000;
+        $('stTime').textContent = elapsed.toFixed(1) + 's';
+        
+        drawExitCard();
+        addLog(`מחזור #${SIM.cycleCount} הושלם! (${elapsed.toFixed(1)}s)`, 'ok');
+        
+        if (SIM.singleCycle) {
+          SIM.singleCycle = false;
+          SIM.running = false;
+          updateRunButton();
+        }
+        
+        changeState('IDLE');
+      }
+      break;
+  }
+  
+  updateSensors();
+  animateMotors();
+  updateCardPosition();
+}
+
+// ============================================================
+//  Animation Loop
+// ============================================================
+
+function loop() {
+  if (SIM.running || SIM.singleCycle || SIM.state !== 'IDLE') {
+    tick();
+  }
+  animId = requestAnimationFrame(loop);
+}
+
+// ============================================================
+//  Controls
+// ============================================================
+
+function toggleRun() {
+  SIM.running = !SIM.running;
+  SIM.singleCycle = false;
+  updateRunButton();
+  
+  if (SIM.running) {
+    addLog('מכונה הופעלה', 'ok');
+  } else {
+    addLog('מכונה הופסקה', 'warn');
+  }
+}
+
+function updateRunButton() {
+  const btn = $('btnStart');
+  if (SIM.running) {
+    btn.textContent = '⏸ עצור';
+    btn.classList.add('running');
+    $('btnStep').disabled = true;
+  } else {
+    btn.textContent = '▶ הפעל';
+    btn.classList.remove('running');
+    $('btnStep').disabled = false;
+  }
+}
+
+function stepOnce() {
+  if (SIM.running) return;
+  SIM.singleCycle = true;
+  addLog('מחזור בודד', 'msg');
+}
+
+function resetMachine() {
+  SIM.running = false;
+  SIM.singleCycle = false;
+  SIM.state = 'IDLE';
+  SIM.cardVisible = false;
+  SIM.m1Running = false;
+  SIM.m2Running = false;
+  SIM.m3Running = false;
+  SIM.cardsInMagazine = 12;
+  SIM.cycleCount = 0;
+  SIM.labelProgress = 0;
+  SIM.stickerApplied = false;
+  SIM.exitCardCount = 0;
+  SIM.feedWheelAngle = 0;
+  SIM.transportWheelAngle = 0;
+  SIM.rollAngle = 0;
+  
+  els.exitCards.innerHTML = '';
+  els.stickerPeeling.setAttribute('opacity', '0');
+  els.stickerOnCard.setAttribute('opacity', '0');
+  
+  updateRunButton();
+  updateSensors();
+  updateCardPosition();
+  animateMotors();
+  drawCardStack();
+  
+  $('stState').textContent = 'IDLE';
+  $('stCycles').textContent = '0';
+  $('stTime').textContent = '—';
+  
+  addLog('מכונה אופסה', 'warn');
+}
+
+function updateSpeed() {
+  SIM.speed = parseInt($('speedSlider').value);
+  $('speedVal').textContent = SIM.speed + '×';
+}
+
+// ============================================================
+//  Log
+// ============================================================
+
+function addLog(msg, type) {
+  const box = $('logBox');
+  const t = ((Date.now() - startTime) / 1000).toFixed(3);
+  const pad = t.padStart(9, '0');
+  const cls = type || 'msg';
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  div.innerHTML = `<span class="time">[${pad}]</span> <span class="${cls}">${msg}</span>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  
+  // Limit log lines
+  while (box.children.length > 100) {
+    box.removeChild(box.firstChild);
+  }
+}
+
+// ============================================================
+//  Init
+// ============================================================
+
+window.addEventListener('DOMContentLoaded', () => {
+  initEls();
+  drawCardStack();
+  updateSensors();
+  updateCardPosition();
+  loop();
+});
+</script>
+
+</body>
+</html>
