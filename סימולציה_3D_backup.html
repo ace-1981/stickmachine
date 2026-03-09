@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מכונת מדבקות — סימולציה תלת-ממדית אינטראקטיבית</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0e1a;color:#e0e0e0;overflow:hidden;height:100vh}
+#canvas3d{width:100%;height:100%;display:block}
+
+/* Overlay UI */
+.overlay{position:absolute;top:0;left:0;width:100%;pointer-events:none;z-index:10}
+.overlay *{pointer-events:auto}
+.header{background:rgba(22,33,62,0.92);padding:10px 20px;text-align:center;border-bottom:2px solid #e94560}
+h1{color:#00d4ff;font-size:1.2em;margin-bottom:2px}
+.subtitle{color:#888;font-size:0.75em}
+
+.controls{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:10px;flex-wrap:wrap;justify-content:center;z-index:10;pointer-events:auto}
+.btn{padding:10px 22px;border:none;border-radius:10px;font-size:0.9em;font-family:inherit;cursor:pointer;font-weight:bold;transition:all .15s}
+.btn-start{background:#2ecc71;color:#fff}
+.btn-start:hover{background:#27ae60}
+.btn-start.running{background:#e74c3c}
+.btn-start.running:hover{background:#c0392b}
+.btn-step{background:#3498db;color:#fff}
+.btn-step:hover{background:#2980b9}
+.btn-reset{background:#95a5a6;color:#fff}
+.btn-reset:hover{background:#7f8c8d}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.speed-control{display:flex;align-items:center;gap:8px;background:rgba(22,33,62,0.92);padding:8px 16px;border-radius:10px}
+.speed-control label{color:#888;font-size:0.85em}
+.speed-control input[type=range]{width:100px;accent-color:#e94560}
+.speed-val{color:#00d4ff;font-weight:bold;min-width:30px;text-align:center}
+
+.side-panel{position:absolute;top:60px;right:12px;z-index:10;pointer-events:auto;display:flex;flex-direction:column;gap:8px;max-width:200px}
+.panel-card{background:rgba(22,33,62,0.92);padding:10px 14px;border-radius:10px;border:1px solid #1a3a6a}
+.panel-label{color:#888;font-size:0.7em;display:block}
+.panel-value{color:#00d4ff;font-weight:bold;font-size:1em}
+.panel-value.state{color:#e94560}
+
+.sensor-row{display:flex;gap:8px;align-items:center;margin:3px 0}
+.sensor-dot{width:12px;height:12px;border-radius:50%;background:#333;border:2px solid #555;transition:all .2s}
+.sensor-dot.active{background:#e94560;border-color:#e94560;box-shadow:0 0 8px #e94560}
+.sensor-name{color:#888;font-size:0.75em}
+
+.view-btns{position:absolute;top:60px;left:12px;z-index:10;display:flex;flex-direction:column;gap:6px;pointer-events:auto}
+.view-btn{background:rgba(22,33,62,0.92);color:#00d4ff;border:1px solid #1a3a6a;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:0.78em;font-family:inherit;text-align:center;transition:all .15s}
+.view-btn:hover{background:#1a3a6a}
+.view-btn.active{background:#e94560;color:#fff;border-color:#e94560}
+
+.help-hint{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);color:#555;font-size:0.75em;z-index:10;pointer-events:none;text-align:center}
+
+.legend{position:absolute;bottom:70px;right:12px;z-index:10;pointer-events:auto;background:rgba(22,33,62,0.92);padding:10px 14px;border-radius:10px;border:1px solid #1a3a6a;font-size:0.72em}
+.legend-title{color:#e94560;font-weight:bold;margin-bottom:6px}
+.legend-item{display:flex;align-items:center;gap:6px;margin:3px 0}
+.legend-color{width:14px;height:10px;border-radius:2px}
+
+.section-label{position:absolute;z-index:5;pointer-events:none;font-size:0.7em;color:#888;text-shadow:0 0 8px rgba(0,0,0,0.8)}
+</style>
+</head>
+<body>
+
+<canvas id="canvas3d"></canvas>
+
+<div class="overlay">
+  <div class="header">
+    <h1>סימולציה תלת-ממדית — מכונת הדבקת מדבקות</h1>
+    <div class="subtitle">3D Interactive Simulation — Credit Card Sticker Labeling Machine</div>
+  </div>
+</div>
+
+<!-- View buttons -->
+<div class="view-btns">
+  <button class="view-btn active" onclick="setView('perspective')">🎥 פרספקטיבה</button>
+  <button class="view-btn" onclick="setView('top')">⬇ מבט מלמעלה</button>
+  <button class="view-btn" onclick="setView('side')">➡ מבט צד</button>
+  <button class="view-btn" onclick="setView('front')">🔲 מבט קדמי</button>
+  <button class="view-btn" onclick="setView('label')">🏷️ אזור הדבקה</button>
+  <button class="view-btn" onclick="setView('feeder')">📥 פידר</button>
+  <hr style="border-color:#1a3a6a;width:100%">
+  <button class="view-btn" id="btnXray" onclick="toggleXray()">👁 שקיפות</button>
+  <button class="view-btn" id="btnExplode" onclick="toggleExplode()">💥 פירוק</button>
+</div>
+
+<!-- Status panel -->
+<div class="side-panel">
+  <div class="panel-card">
+    <span class="panel-label">מצב מכונה</span>
+    <span class="panel-value state" id="stState">IDLE</span>
+  </div>
+  <div class="panel-card">
+    <span class="panel-label">מחזורים</span>
+    <span class="panel-value" id="stCycles">0</span>
+  </div>
+  <div class="panel-card">
+    <span class="panel-label">כרטיסים במחסנית</span>
+    <span class="panel-value" id="stCards">12</span>
+  </div>
+  <div class="panel-card">
+    <span class="panel-label">חיישנים</span>
+    <div class="sensor-row"><div class="sensor-dot" id="s1dot"></div><span class="sensor-name">S1 פידר</span></div>
+    <div class="sensor-row"><div class="sensor-dot" id="s2dot"></div><span class="sensor-name">S2 הדבקה</span></div>
+    <div class="sensor-row"><div class="sensor-dot" id="s3dot"></div><span class="sensor-name">S3 יציאה</span></div>
+  </div>
+  <div class="panel-card">
+    <span class="panel-label">מנועים</span>
+    <div class="sensor-row"><span class="sensor-name" id="stM1">M1 מסוע: ⏸</span></div>
+    <div class="sensor-row"><span class="sensor-name" id="stM2">M2 סרוו: ⏸</span></div>
+    <div class="sensor-row"><span class="sensor-name" id="stM3">M3 מדבקה: ⏸</span></div>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-title">מקרא חלקים</div>
+  <div class="legend-item"><div class="legend-color" style="background:#333"></div> מסגרת (הדפסה 3D)</div>
+  <div class="legend-item"><div class="legend-color" style="background:#4169E1"></div> רולרים/גלגלים</div>
+  <div class="legend-item"><div class="legend-color" style="background:#228B22"></div> רצועות מסוע</div>
+  <div class="legend-item"><div class="legend-color" style="background:#e94560"></div> גליל מדבקות</div>
+  <div class="legend-item"><div class="legend-color" style="background:#FFD700"></div> Peel Plate</div>
+  <div class="legend-item"><div class="legend-color" style="background:#4ecdc4"></div> כרטיס אשראי</div>
+  <div class="legend-item"><div class="legend-color" style="background:#808080"></div> מנועי NEMA17</div>
+</div>
+
+<!-- Controls -->
+<div class="help-hint">גרור לסיבוב • גלגל לזום • Shift+גרור להזזה</div>
+<div class="controls">
+  <button class="btn btn-start" id="btnStart" onclick="toggleRun()">▶ הפעל</button>
+  <button class="btn btn-step" onclick="stepOnce()">⏭ מחזור בודד</button>
+  <button class="btn btn-reset" onclick="resetMachine()">↺ איפוס</button>
+  <div class="speed-control">
+    <label>מהירות:</label>
+    <input type="range" id="speedSlider" min="1" max="10" value="5" oninput="updateSpeed()">
+    <span class="speed-val" id="speedVal">5×</span>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================
+//  Machine Parameters (matching OpenSCAD)
+// ============================================================
+const P = {
+  // Card
+  cardL: 85.6, cardW: 54, cardT: 0.8,
+  // Conveyor
+  convLength: 400, convWidth: 60, beltW: 52, beltT: 1.5,
+  rollerD: 30, rollerGap: 2, frameT: 4, frameH: 50, sideT: 3,
+  // Magazine
+  magH: 80, magWall: 3, magXOffset: 40,
+  // Label head
+  labelRollD: 100, labelRollCore: 40, labelStripW: 56,
+  labelXOffset: 200, pressRollerD: 20,
+  // Motors
+  nema17: 42.3, nema17Depth: 47,
+  // Exit
+  exitLength: 60, exitDrop: 20,
+  // Sensors
+  sensorD: 3
+};
+
+// Computed
+const beltTopZ = P.frameH + P.rollerD;  // top of roller = bottom of belt surface
+const idlerX = P.rollerD / 2 + P.rollerGap;
+const driveX = P.convLength - P.rollerD / 2 - P.rollerGap;
+const rollerCZ = P.frameH + P.rollerD / 2;
+
+// Scale everything to reasonable Three.js units (mm → 0.01 units)
+const S = 0.01;
+
+// ============================================================
+//  Three.js Setup
+// ============================================================
+const canvas = document.getElementById('canvas3d');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0e1a);
+scene.fog = new THREE.Fog(0x0a0e1a, 12, 25);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 100);
+camera.position.set(3.5, 3, 3);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(2, 0.5, 0.3);
+controls.update();
+
+// ============================================================
+//  Lighting
+// ============================================================
+const ambientLight = new THREE.AmbientLight(0x404060, 0.6);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(5, 8, 4);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.left = -5;
+dirLight.shadow.camera.right = 5;
+dirLight.shadow.camera.top = 5;
+dirLight.shadow.camera.bottom = -5;
+scene.add(dirLight);
+
+const fillLight = new THREE.DirectionalLight(0x4488ff, 0.3);
+fillLight.position.set(-3, 4, -2);
+scene.add(fillLight);
+
+const pointLight = new THREE.PointLight(0xe94560, 0.4, 8);
+pointLight.position.set(2.6, 2, 0.3);
+scene.add(pointLight);
+
+// ============================================================
+//  Materials
+// ============================================================
+const mat = {
+  frame: new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7, metalness: 0.3 }),
+  frameTransp: new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7, metalness: 0.3, transparent: true, opacity: 0.3 }),
+  roller: new THREE.MeshStandardMaterial({ color: 0x4169E1, roughness: 0.4, metalness: 0.5 }),
+  belt: new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.8, metalness: 0.1 }),
+  card: new THREE.MeshStandardMaterial({ color: 0x4ecdc4, roughness: 0.3, metalness: 0.4 }),
+  sticker: new THREE.MeshStandardMaterial({ color: 0xe94560, roughness: 0.5, metalness: 0.1 }),
+  labelRoll: new THREE.MeshStandardMaterial({ color: 0xe94560, roughness: 0.6, metalness: 0.1, transparent: true, opacity: 0.7 }),
+  peelPlate: new THREE.MeshStandardMaterial({ color: 0xFFD700, roughness: 0.3, metalness: 0.6 }),
+  motor: new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.6, metalness: 0.4 }),
+  shaft: new THREE.MeshStandardMaterial({ color: 0xCCCCCC, roughness: 0.2, metalness: 0.8 }),
+  sensor: new THREE.MeshStandardMaterial({ color: 0x00ff00, roughness: 0.3, metalness: 0.2, emissive: 0x00ff00, emissiveIntensity: 0.3 }),
+  sensorActive: new THREE.MeshStandardMaterial({ color: 0xe94560, roughness: 0.3, metalness: 0.2, emissive: 0xe94560, emissiveIntensity: 0.8 }),
+  sensorBody: new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, metalness: 0.2 }),
+  liner: new THREE.MeshStandardMaterial({ color: 0xCD853F, roughness: 0.6, metalness: 0.1, transparent: true, opacity: 0.6 }),
+  cardStack: new THREE.MeshStandardMaterial({ color: 0x4ecdc4, roughness: 0.3, metalness: 0.2, transparent: true, opacity: 0.4 }),
+  glass: new THREE.MeshStandardMaterial({ color: 0x88aaff, roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.15 }),
+  exit: new THREE.MeshStandardMaterial({ color: 0x2ecc71, roughness: 0.6, metalness: 0.2, transparent: true, opacity: 0.5 }),
+  labelStrip: new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.6, metalness: 0.1, transparent: true, opacity: 0.6 }),
+};
+
+// ============================================================
+//  Ground plane
+// ============================================================
+const groundGeo = new THREE.PlaneGeometry(20, 20);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.9 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Grid helper
+const grid = new THREE.GridHelper(10, 50, 0x1a2a4a, 0x0f1f3a);
+scene.add(grid);
+
+// ============================================================
+//  Machine Group (for explode view)
+// ============================================================
+const machineGroup = new THREE.Group();
+scene.add(machineGroup);
+
+// Sub-groups for modules (for explode)
+const moduleA = new THREE.Group(); // Conveyor
+const moduleB = new THREE.Group(); // Magazine
+const moduleC = new THREE.Group(); // Label Head
+const moduleD = new THREE.Group(); // Exit
+const motorsGroup = new THREE.Group();
+
+machineGroup.add(moduleA, moduleB, moduleC, moduleD, motorsGroup);
+
+// Store original positions for explode
+const explodeOffsets = {
+  A: new THREE.Vector3(0, 0, 0),
+  B: new THREE.Vector3(0, 0.6, 0),
+  C: new THREE.Vector3(0, 0.8, 0),
+  D: new THREE.Vector3(0.5, 0, 0),
+  motors: new THREE.Vector3(0, -0.5, 0.5)
+};
+
+// ============================================================
+//  Helper: Convert mm coords to scene units
+// ============================================================
+function mm(x, y, z) {
+  return new THREE.Vector3(x * S, z * S, y * S);
+}
+
+function box(w, d, h) {
+  return new THREE.BoxGeometry(w * S, h * S, d * S);
+}
+
+function addBox(group, material, x, y, z, w, d, h) {
+  const geo = box(w, d, h);
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.position.copy(mm(x + w / 2, y + d / 2, z + h / 2));
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+  return mesh;
+}
+
+function addCylinder(group, material, cx, cy, cz, diameter, length, rotAxis) {
+  const geo = new THREE.CylinderGeometry(diameter / 2 * S, diameter / 2 * S, length * S, 32);
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.position.copy(mm(cx, cy, cz));
+  if (rotAxis === 'x') mesh.rotation.z = Math.PI / 2;
+  if (rotAxis === 'y') { /* default */ }
+  if (rotAxis === 'z') mesh.rotation.x = Math.PI / 2;
+  mesh.castShadow = true;
+  group.add(mesh);
+  return mesh;
+}
+
+function addTube(group, material, cx, cy, cz, outerD, innerD, length) {
+  const outer = outerD / 2 * S;
+  const inner = innerD / 2 * S;
+  const shape = new THREE.Shape();
+  shape.absarc(0, 0, outer, 0, Math.PI * 2, false);
+  const hole = new THREE.Path();
+  hole.absarc(0, 0, inner, 0, Math.PI * 2, true);
+  shape.holes.push(hole);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: length * S, bevelEnabled: false });
+  const mesh = new THREE.Mesh(geo, material);
+  // Ring is in local XY (= scene XY = machine X × height)
+  // Extrude along local Z (= scene Z = machine Y/width) — no rotation needed
+  mesh.position.copy(mm(cx, cy - length / 2, cz));
+  mesh.castShadow = true;
+  group.add(mesh);
+  return mesh;
+}
+
+// ============================================================
+//  Build Module A: Conveyor
+// ============================================================
+
+// Side frames
+addBox(moduleA, mat.frame, 0, 0, 0, P.convLength, P.sideT, P.frameH + P.rollerD / 2 + 5);
+addBox(moduleA, mat.frame, 0, P.convWidth - P.sideT, 0, P.convLength, P.sideT, P.frameH + P.rollerD / 2 + 5);
+
+// Cross beams
+addBox(moduleA, mat.frame, 30, P.sideT, P.frameH * 0.3, P.frameT, P.convWidth - 2 * P.sideT, P.frameT);
+addBox(moduleA, mat.frame, P.convLength / 2 - P.frameT / 2, P.sideT, P.frameH * 0.3, P.frameT, P.convWidth - 2 * P.sideT, P.frameT);
+addBox(moduleA, mat.frame, P.convLength - 40, P.sideT, P.frameH * 0.3, P.frameT, P.convWidth - 2 * P.sideT, P.frameT);
+
+// Support legs
+function addLeg(x, y) {
+  addBox(moduleA, mat.frame, x, y, 0, P.sideT + 4, P.sideT, P.frameH * 0.3);
+  addBox(moduleA, mat.frame, x, y, 0, P.sideT + 10, P.sideT, P.frameT);
+}
+addLeg(20, 0); addLeg(20, P.convWidth - P.sideT);
+addLeg(P.convLength - 40, 0); addLeg(P.convLength - 40, P.convWidth - P.sideT);
+
+// Rollers
+const idlerMesh = addCylinder(moduleA, mat.roller, idlerX, P.convWidth / 2, rollerCZ, P.rollerD, P.convWidth - 2 * P.sideT, 'z');
+const driveMesh = addCylinder(moduleA, mat.roller, driveX, P.convWidth / 2, rollerCZ, P.rollerD, P.convWidth - 2 * P.sideT, 'z');
+
+// Shafts
+addCylinder(moduleA, mat.shaft, idlerX, P.convWidth / 2, rollerCZ, 8, P.convWidth + 10, 'z');
+addCylinder(moduleA, mat.shaft, driveX, P.convWidth / 2, rollerCZ, 8, P.convWidth + 10, 'z');
+
+// Belt - top surface
+addBox(moduleA, mat.belt, idlerX, (P.convWidth - P.beltW) / 2, rollerCZ + P.rollerD / 2, driveX - idlerX, P.beltW, P.beltT);
+// Belt - bottom (return)
+addBox(moduleA, mat.belt, idlerX, (P.convWidth - P.beltW) / 2, rollerCZ - P.rollerD / 2 - P.beltT, driveX - idlerX, P.beltW, P.beltT);
+
+// Belt wraps around rollers (half-cylinders)
+function addBeltWrap(cx) {
+  const r = P.rollerD / 2 + P.beltT;
+  const shape = new THREE.Shape();
+  const segments = 32;
+  // Left half for idler, right half for drive
+  const startAngle = (cx === idlerX) ? Math.PI / 2 : -Math.PI / 2;
+  const endAngle = (cx === idlerX) ? 3 * Math.PI / 2 : Math.PI / 2;
+  shape.absarc(0, 0, r * S, startAngle, endAngle, false);
+  const rInner = P.rollerD / 2 * S;
+  shape.absarc(0, 0, rInner, endAngle, startAngle, true);
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: P.beltW * S, bevelEnabled: false });
+  const mesh = new THREE.Mesh(geo, mat.belt);
+  mesh.position.set(cx * S, rollerCZ * S, (P.convWidth / 2 - P.beltW / 2) * S);
+  mesh.castShadow = true;
+  moduleA.add(mesh);
+}
+addBeltWrap(idlerX);
+addBeltWrap(driveX);
+
+// ============================================================
+//  Build Module B: Tilted Magazine + Servo Gate
+//  
+//  How it works:
+//  - Cards lay flat in a stack inside a tilted magazine (~25°)
+//  - Gravity pushes the bottom card toward the exit gate
+//  - A small servo operates a gate arm at the exit opening
+//  - Gate opens → bottom card slides onto the conveyor belt
+//  - Gate closes → next card slides down to gate position
+//  - Simple, reliable, no calibration needed!
+// ============================================================
+const magW = P.cardW + 2 * P.magWall + 2;
+const magL = P.cardL + 2 * P.magWall + 2;
+const magYOff = (P.convWidth - magW) / 2;
+const magBaseZ = beltTopZ + P.beltT;
+
+// Tilt angle for the magazine (25° from vertical)
+const tiltAngle = 25 * Math.PI / 180;
+
+// Reference position for labels (world space)
+const magCenterX = P.magXOffset + magL / 2;
+const magCenterY = magYOff + magW / 2;
+
+// Materials
+const magWallMat = mat.frame.clone();
+const magGlassMat = new THREE.MeshStandardMaterial({
+  color: 0x6688aa, transparent: true, opacity: 0.15,
+  roughness: 0.1, metalness: 0.1, side: THREE.DoubleSide
+});
+
+// Helper: add box in Three.js LOCAL coordinates (pre-scaled)
+function addLocalBox(group, material, px, py, pz, sx, sy, sz) {
+  const geo = new THREE.BoxGeometry(sx, sy, sz);
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.position.set(px, py, pz);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+  return mesh;
+}
+
+// ---- Tilted magazine group ----
+// Pivot at the bottom-front of the magazine (exit at belt level)
+const magExitX = P.magXOffset + magL - P.magWall;
+const tiltedMagGroup = new THREE.Group();
+tiltedMagGroup.position.set(magExitX * S, magBaseZ * S, magCenterY * S);
+tiltedMagGroup.rotation.z = -tiltAngle;  // lean back — back end UP, exit at belt level
+moduleB.add(tiltedMagGroup);
+
+// Channel dimensions in local space (mm)
+const chL = P.cardL + 4;    // card-length direction (local X)
+const chW = P.cardW + 2;    // card-width direction (local Z)
+const chH = P.magH;         // stack height (local Y)
+const wallT = P.magWall;
+const gateOpenH = P.cardT + 1.5;  // gate opening height (~1 card)
+
+// Inner offset group: shifts geometry so the EXIT OPENING is at the tilt pivot
+const exitOffX = chL / 2 + wallT;  // distance from center to exit face
+const magInner = new THREE.Group();
+magInner.position.x = -exitOffX * S;
+tiltedMagGroup.add(magInner);
+
+// ==== WALLS (in tilted local space, all values * S) ====
+// Floor
+addLocalBox(magInner, magWallMat,
+  -(chL / 2) * S, -(wallT / 2) * S, 0,
+  (chL + 2 * wallT) * S, wallT * S, (chW + 2 * wallT) * S);
+// Back wall (uphill side, full height)
+addLocalBox(magInner, magWallMat,
+  -(chL / 2 + wallT / 2) * S, (chH / 2) * S, 0,
+  wallT * S, chH * S, (chW + 2 * wallT) * S);
+// Front wall — upper part (above gate opening)
+addLocalBox(magInner, magWallMat,
+  (chL / 2 + wallT / 2) * S, (gateOpenH + (chH - gateOpenH) / 2) * S, 0,
+  wallT * S, (chH - gateOpenH) * S, (chW + 2 * wallT) * S);
+// Side walls (transparent)
+addLocalBox(magInner, magGlassMat,
+  0, (chH / 2) * S, -(chW / 2 + wallT / 2) * S,
+  (chL + 2 * wallT) * S, chH * S, wallT * S);
+addLocalBox(magInner, magGlassMat,
+  0, (chH / 2) * S, (chW / 2 + wallT / 2) * S,
+  (chL + 2 * wallT) * S, chH * S, wallT * S);
+// Top cross beam
+addLocalBox(magInner, magWallMat,
+  0, (chH + wallT / 2) * S, 0,
+  (chL + 2 * wallT) * S, wallT * S, (chW + 2 * wallT) * S);
+
+// ==== GATE OPENING HIGHLIGHT (yellow frame around exit) ====
+const slotGlowMat = new THREE.MeshStandardMaterial({
+  color: 0xf1c40f, emissive: 0xf1c40f, emissiveIntensity: 0.6,
+  transparent: true, opacity: 0.4
+});
+// Bottom edge of gate opening
+addLocalBox(magInner, slotGlowMat,
+  (chL / 2 + wallT / 2) * S, -0.25 * S, 0,
+  (wallT + 2) * S, 0.5 * S, chW * S);
+// Top edge of gate opening (blocks card #2)
+const slotTopMat = new THREE.MeshStandardMaterial({
+  color: 0xe74c3c, emissive: 0xe74c3c, emissiveIntensity: 0.5,
+  transparent: true, opacity: 0.6
+});
+addLocalBox(magInner, slotTopMat,
+  (chL / 2 + wallT / 2) * S, (gateOpenH + 0.75) * S, 0,
+  (wallT + 2) * S, 1.5 * S, chW * S);
+
+// ==== CARD STACK (inside tilted magazine) ====
+const stackGroup = new THREE.Group();
+magInner.add(stackGroup);
+const cardLayerGeo = new THREE.BoxGeometry(P.cardL * S, P.cardT * S, P.cardW * S);
+for (let i = 0; i < 12; i++) {
+  const cMat = new THREE.MeshStandardMaterial({
+    color: 0x4ecdc4, transparent: true,
+    opacity: i === 0 ? 0.85 : 0.25 + (i / 12) * 0.35,
+    roughness: 0.3, metalness: 0.2
+  });
+  const cMesh = new THREE.Mesh(cardLayerGeo, cMat);
+  const cardY = P.cardT / 2 + i * (P.cardT + 0.15) + 1;
+  cMesh.position.set(0, cardY * S, 0);
+  stackGroup.add(cMesh);
+}
+const stackMesh = stackGroup;
+
+// ==== SERVO GATE (pivots at the exit opening — now at tiltedMagGroup origin) ====
+const servoGateGroup = new THREE.Group();
+servoGateGroup.position.set(0, 0, 0);  // pivot IS at exit (tilt pivot)
+tiltedMagGroup.add(servoGateGroup);
+
+const gateMat = new THREE.MeshStandardMaterial({
+  color: 0xe74c3c, roughness: 0.3, metalness: 0.5,
+  emissive: 0xe74c3c, emissiveIntensity: 0.15
+});
+const gateArmLen = 18;
+addLocalBox(servoGateGroup, gateMat,
+  (gateArmLen / 2) * S, (P.cardT / 2 + 0.5) * S, 0,
+  gateArmLen * S, 2 * S, chW * 0.9 * S);
+const servoGate = servoGateGroup;
+
+// Servo motor body (on the side of the magazine)
+const servoBodyMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5 });
+addLocalBox(magInner, servoBodyMat,
+  (chL / 2 + wallT + 10) * S, -8 * S, (chW / 2 + wallT + 8) * S,
+  22 * S, 12 * S, 12 * S);
+// Servo horn
+addLocalBox(magInner, new THREE.MeshStandardMaterial({ color: 0xffffff }),
+  (chL / 2 + wallT) * S, -3 * S, (chW / 2 + wallT + 3) * S,
+  3 * S, 10 * S, 3 * S);
+
+// ==== GUIDE RAMP (exit to belt surface) ====
+const rampMat = new THREE.MeshStandardMaterial({ color: 0x95a5a6, roughness: 0.3, metalness: 0.3 });
+addBox(moduleB, rampMat, magExitX, magYOff + P.magWall, magBaseZ - 2, 15, P.cardW, 2);
+
+// ==== TILT ANGLE INDICATOR (dashed line showing 25° tilt) ====
+const tiltIndicatorMat = new THREE.MeshStandardMaterial({
+  color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.3,
+  transparent: true, opacity: 0.5
+});
+// Vertical reference line (world space)
+addBox(moduleB, tiltIndicatorMat, magExitX - 1, magYOff - 5, magBaseZ, 1, 2, chH + 15);
+
+// ==== MOTOR M2 (servo — mounted near magazine) ====
+addBox(motorsGroup, servoBodyMat, magCenterX - 11, magYOff - 22, magBaseZ + 15, 22, 12, 12);
+addCylinder(motorsGroup, mat.shaft, magCenterX, magYOff - 10, magBaseZ + 21, 3, 10, 'y');
+
+// ============================================================
+//  Build Module C: Label Head
+// ============================================================
+const lhW = P.convWidth;
+const lhL = 140;      // wider to contain label roll (diameter 100) + peel plate
+const lhH = 170;      // taller to contain roll + guide rollers + liner spool
+const lhBaseZ = beltTopZ + P.beltT;
+const lhX = P.labelXOffset;
+
+// Support pillars
+addBox(moduleC, mat.frame, lhX, 0, lhBaseZ, P.frameT, P.sideT, lhH);
+addBox(moduleC, mat.frame, lhX + lhL - P.frameT, 0, lhBaseZ, P.frameT, P.sideT, lhH);
+addBox(moduleC, mat.frame, lhX, lhW - P.sideT, lhBaseZ, P.frameT, P.sideT, lhH);
+addBox(moduleC, mat.frame, lhX + lhL - P.frameT, lhW - P.sideT, lhBaseZ, P.frameT, P.sideT, lhH);
+
+// Top beams
+addBox(moduleC, mat.frame, lhX, 0, lhBaseZ + lhH - P.frameT, P.frameT, lhW, P.frameT);
+addBox(moduleC, mat.frame, lhX + lhL - P.frameT, 0, lhBaseZ + lhH - P.frameT, P.frameT, lhW, P.frameT);
+addBox(moduleC, mat.frame, lhX, 0, lhBaseZ + lhH - P.frameT, lhL, P.sideT, P.frameT);
+addBox(moduleC, mat.frame, lhX, lhW - P.sideT, lhBaseZ + lhH - P.frameT, lhL, P.sideT, P.frameT);
+
+// Label roll — realistic multi-ring appearance, all in a rotating group
+const rollZ = lhBaseZ + lhH - 60;
+const rollX = lhX + lhL / 2;
+const rollY = lhW / 2;
+
+// Create a pivot group so the ENTIRE roll rotates as one
+const labelRollGroup = new THREE.Group();
+// Pivot point at roll center (scene coords: x*S, z*S, y*S)
+labelRollGroup.position.set(rollX * S, rollZ * S, rollY * S);
+moduleC.add(labelRollGroup);
+
+// Helper: add tube relative to roll center (offset = 0,0,0)
+function addRollTube(material, outerD, innerD, length) {
+  const outer = outerD / 2 * S;
+  const inner = innerD / 2 * S;
+  const shape = new THREE.Shape();
+  shape.absarc(0, 0, outer, 0, Math.PI * 2, false);
+  const hole = new THREE.Path();
+  hole.absarc(0, 0, inner, 0, Math.PI * 2, true);
+  shape.holes.push(hole);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: length * S, bevelEnabled: false });
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.position.set(0, 0, -length / 2 * S);
+  labelRollGroup.add(mesh);
+  return mesh;
+}
+
+// Core
+addRollTube(mat.shaft, P.labelRollCore + 4, P.labelRollCore - 2, P.labelStripW);
+// Sticker layers (concentric rings with alternating color)
+const rollLayers = 8;
+for (let i = 0; i < rollLayers; i++) {
+  const innerD = P.labelRollCore + 4 + i * ((P.labelRollD - P.labelRollCore - 4) / rollLayers);
+  const outerD = innerD + (P.labelRollD - P.labelRollCore - 4) / rollLayers;
+  const layerMat = (i % 2 === 0) ? mat.labelRoll : mat.sticker.clone();
+  if (i % 2 !== 0) { layerMat.transparent = true; layerMat.opacity = 0.5; }
+  addRollTube(layerMat, outerD, innerD, P.labelStripW);
+}
+// Radial line on the roll face so rotation is visible
+const lineGeo = new THREE.BoxGeometry(P.labelRollD / 2 * S, 2 * S, 2 * S);
+const lineMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.3 });
+const rollLine = new THREE.Mesh(lineGeo, lineMat);
+rollLine.position.set(P.labelRollD / 4 * S, 0, P.labelStripW / 2 * S + 1 * S);
+labelRollGroup.add(rollLine);
+const rollLine2 = rollLine.clone();
+rollLine2.position.z = -P.labelStripW / 2 * S - 1 * S;
+labelRollGroup.add(rollLine2);
+
+// Roll axle (doesn't rotate — separate)
+addCylinder(moduleC, mat.shaft, rollX, rollY, rollZ, 8, lhW + 6, 'z');
+// Flanges
+addCylinder(moduleC, mat.frame, rollX, P.sideT + 3, rollZ, P.labelRollD + 6, 1.5, 'z');
+addCylinder(moduleC, mat.frame, rollX, lhW - P.sideT - 3, rollZ, P.labelRollD + 6, 1.5, 'z');
+
+// ---- Guide rollers for label path ----
+const guideD = 12; // guide roller diameter
+// Guide roller 1: below the main roll (strip exits roll going down)
+const g1X = rollX + 8;
+const g1Z = rollZ - P.labelRollD / 2 - 10;
+addCylinder(moduleC, mat.shaft, g1X, rollY, g1Z, guideD, P.labelStripW + 4, 'z');
+// Guide roller 2: just before peel plate (redirects strip horizontal)
+const g2X = rollX - 15;
+const g2Z = lhBaseZ + 12;
+addCylinder(moduleC, mat.shaft, g2X, rollY, g2Z, guideD, P.labelStripW + 4, 'z');
+// Guide roller 3: after peel plate tip (liner returns up)
+const g3X = lhX + lhL - 12;
+const g3Z = lhBaseZ + 30;
+addCylinder(moduleC, mat.shaft, g3X, rollY, g3Z, guideD, P.labelStripW + 4, 'z');
+// Guide roller 4: upper redirect to liner spool  
+const g4X = lhX + lhL - 8;
+const g4Z = rollZ - 25;
+addCylinder(moduleC, mat.shaft, g4X, rollY, g4Z, guideD, P.labelStripW + 4, 'z');
+
+// Peel plate — sharp wedge where sticker separates from liner
+const peelX = lhX + lhL / 2 + 10;
+const peelZ = lhBaseZ + 5;
+addBox(moduleC, mat.peelPlate, peelX, P.sideT + 2, peelZ, 35, lhW - 2 * P.sideT - 4, 2.5);
+// Sharp angled tip of peel plate
+const peelTipGeo = new THREE.BufferGeometry();
+const tipW = (lhW - 2 * P.sideT - 4) * S;
+const tipVerts = new Float32Array([
+  // Triangle 1
+  (peelX + 35) * S, (peelZ + 2.5) * S, (P.sideT + 2) * S,
+  (peelX + 35) * S, peelZ * S, (P.sideT + 2) * S,
+  (peelX + 48) * S, (peelZ + 1) * S, (P.sideT + 2) * S,
+  // Triangle 2
+  (peelX + 35) * S, (peelZ + 2.5) * S, (lhW - P.sideT - 2) * S,
+  (peelX + 48) * S, (peelZ + 1) * S, (lhW - P.sideT - 2) * S,
+  (peelX + 35) * S, peelZ * S, (lhW - P.sideT - 2) * S,
+  // Top face
+  (peelX + 35) * S, (peelZ + 2.5) * S, (P.sideT + 2) * S,
+  (peelX + 48) * S, (peelZ + 1) * S, (P.sideT + 2) * S,
+  (peelX + 48) * S, (peelZ + 1) * S, (lhW - P.sideT - 2) * S,
+  (peelX + 35) * S, (peelZ + 2.5) * S, (P.sideT + 2) * S,
+  (peelX + 48) * S, (peelZ + 1) * S, (lhW - P.sideT - 2) * S,
+  (peelX + 35) * S, (peelZ + 2.5) * S, (lhW - P.sideT - 2) * S,
+]);
+peelTipGeo.setAttribute('position', new THREE.BufferAttribute(tipVerts, 3));
+peelTipGeo.computeVertexNormals();
+const peelTipMesh = new THREE.Mesh(peelTipGeo, mat.peelPlate);
+peelTipMesh.castShadow = true;
+moduleC.add(peelTipMesh);
+
+// Press roller (presses sticker onto card)
+const pressX = peelX - 5;
+const pressZ = peelZ + P.cardT + 1;
+const pressRoller = addCylinder(moduleC, mat.roller, pressX, rollY, pressZ + P.pressRollerD / 2, P.pressRollerD, lhW - 2 * P.sideT - 4, 'z');
+
+// ============ Label Strip Path (visible ribbon) ============
+// Roll → G1 → G2 → Peel Plate → (sticker separates) → Peel Tip → G3 → G4 → Liner Spool
+const stripY = rollY;
+const stripThick = 0.5; // ribbon thickness in mm
+
+// Create a thin ribbon between two points (x1,z1)-(x2,z2) in machine coords
+function addRibbon(x1, z1, x2, z2, material, width) {
+  const dx = x2 - x1, dz = z2 - z1;
+  const len = Math.sqrt(dx * dx + dz * dz);
+  const angle = Math.atan2(dz, dx); // tilt angle in side-view
+  // Thin box: length along local X, 0.5mm height (scene Y), width along scene Z
+  const geo = new THREE.BoxGeometry(len * S, stripThick * S, width * S);
+  const mesh = new THREE.Mesh(geo, material);
+  const mx = (x1 + x2) / 2, mz = (z1 + z2) / 2;
+  // mm(x, y, z) → Vector3(x*S, z*S, y*S)  — Y↔Z swap
+  mesh.position.set(mx * S, mz * S, stripY * S);
+  // Rotate around scene Z axis (= machine Y) to tilt in side-view plane
+  mesh.rotation.z = angle;
+  moduleC.add(mesh);
+  return mesh;
+}
+
+// Sticker strip path (green with stickers) - from roll → G1 → G2 → peel plate
+addRibbon(rollX, rollZ - P.labelRollD / 2, g1X, g1Z, mat.labelStrip, P.labelStripW);
+addRibbon(g1X, g1Z, g2X, g2Z, mat.labelStrip, P.labelStripW);
+addRibbon(g2X, g2Z, peelX, peelZ + 1.5, mat.labelStrip, P.labelStripW);
+// On peel plate (stickers face down → separation zone)
+addRibbon(peelX, peelZ + 1.5, peelX + 48, peelZ + 1, mat.sticker, P.labelStripW);
+
+// Liner return path (backing paper, no stickers)
+const linerStripMat = mat.liner.clone();
+linerStripMat.transparent = true; linerStripMat.opacity = 0.45;
+addRibbon(peelX + 48, peelZ + 1, g3X, g3Z, linerStripMat, P.labelStripW);
+addRibbon(g3X, g3Z, g4X, g4Z, linerStripMat, P.labelStripW);
+
+// Liner spool (take-up reel)
+const linerX = g4X + 5;
+const linerZ = g4Z + 8;
+addTube(moduleC, mat.liner, linerX, rollY, linerZ, 40, 18, P.labelStripW);
+addCylinder(moduleC, mat.shaft, linerX, rollY, linerZ, 8, P.labelStripW + 4, 'z');
+addRibbon(g4X, g4Z, linerX, linerZ - 20, linerStripMat, P.labelStripW);
+
+// Small sticker marks on the strip approaching peel plate
+for (let i = 0; i < 3; i++) {
+  const t = 0.25 + i * 0.25;
+  const sx = g2X + (peelX - g2X) * t;
+  const sz = g2Z + (peelZ + 1.5 - g2Z) * t;
+  const sGeo = new THREE.BoxGeometry(8 * S, 1 * S, (P.cardW - 4) * S);
+  const sMesh = new THREE.Mesh(sGeo, mat.sticker);
+  sMesh.position.set(sx * S, sz * S, stripY * S);
+  const sAngle = Math.atan2(peelZ + 1.5 - g2Z, peelX - g2X);
+  sMesh.rotation.z = sAngle;
+  moduleC.add(sMesh);
+}
+
+// M3 motor (label roll)
+addBox(motorsGroup, mat.motor, rollX - P.nema17 / 2, lhW + 10, rollZ - P.nema17 / 2, P.nema17, P.nema17Depth, P.nema17);
+addCylinder(motorsGroup, mat.shaft, rollX, lhW + 5, rollZ, 5, 20, 'z');
+
+// ============================================================
+//  Build Module D: Exit Tray
+// ============================================================
+// Simple angled tray
+const exitGeo = new THREE.BufferGeometry();
+const exitVertices = new Float32Array([
+  // Top face of tray (two triangles)
+  P.convLength * S, beltTopZ * S, 0,
+  P.convLength * S, beltTopZ * S, P.convWidth * S,
+  (P.convLength + P.exitLength) * S, (beltTopZ - P.exitDrop) * S, 0,
+
+  (P.convLength + P.exitLength) * S, (beltTopZ - P.exitDrop) * S, 0,
+  P.convLength * S, beltTopZ * S, P.convWidth * S,
+  (P.convLength + P.exitLength) * S, (beltTopZ - P.exitDrop) * S, P.convWidth * S,
+]);
+exitGeo.setAttribute('position', new THREE.BufferAttribute(exitVertices, 3));
+exitGeo.computeVertexNormals();
+const exitMesh = new THREE.Mesh(exitGeo, mat.exit);
+exitMesh.castShadow = true;
+moduleD.add(exitMesh);
+
+// Exit stopper
+addBox(moduleD, mat.frame, P.convLength + P.exitLength, 0, beltTopZ - P.exitDrop, P.frameT, P.convWidth, 15);
+
+// Side walls for exit
+const exitSide1Geo = new THREE.BufferGeometry();
+const s1v = new Float32Array([
+  P.convLength * S, beltTopZ * S, 0,
+  P.convLength * S, (beltTopZ + 15) * S, 0,
+  (P.convLength + P.exitLength) * S, (beltTopZ - P.exitDrop + 10) * S, 0,
+
+  P.convLength * S, beltTopZ * S, 0,
+  (P.convLength + P.exitLength) * S, (beltTopZ - P.exitDrop + 10) * S, 0,
+  (P.convLength + P.exitLength) * S, (beltTopZ - P.exitDrop) * S, 0,
+]);
+exitSide1Geo.setAttribute('position', new THREE.BufferAttribute(s1v, 3));
+exitSide1Geo.computeVertexNormals();
+moduleD.add(new THREE.Mesh(exitSide1Geo, mat.frame));
+
+// ============================================================
+//  M1 Motor (conveyor drive)
+// ============================================================
+addBox(motorsGroup, mat.motor, driveX - P.nema17 / 2, P.convWidth + 15, rollerCZ - P.nema17 / 2, P.nema17, P.nema17Depth, P.nema17);
+addCylinder(motorsGroup, mat.shaft, driveX, P.convWidth + 10, rollerCZ, 5, 15, 'z');
+
+// ============================================================
+//  Sensors
+// ============================================================
+const sensors = {};
+
+function addSensor(group, xPos, name) {
+  // Body
+  addBox(group, mat.sensorBody, xPos - 2, P.sideT, beltTopZ + P.beltT, 4, P.convWidth - 2 * P.sideT, 15);
+  // Fiber optic dots
+  const dotLeft = addCylinder(group, mat.sensor, xPos, P.sideT + 5, beltTopZ + P.beltT + 8, P.sensorD, 12, 'y');
+  const dotRight = addCylinder(group, mat.sensor, xPos, P.convWidth - P.sideT - 5, beltTopZ + P.beltT + 8, P.sensorD, 12, 'y');
+  sensors[name] = { left: dotLeft, right: dotRight };
+}
+
+addSensor(moduleA, P.magXOffset + P.cardL + 5, 'S1');
+addSensor(moduleA, P.labelXOffset - 10, 'S2');
+addSensor(moduleA, P.labelXOffset + 80, 'S3');
+
+// ============================================================
+//  Active Card (animated)
+// ============================================================
+const cardGeo = new THREE.BoxGeometry(P.cardL * S, P.cardT * S, P.cardW * S);
+const activeCard = new THREE.Mesh(cardGeo, mat.card);
+activeCard.visible = false;
+activeCard.castShadow = true;
+scene.add(activeCard);
+
+// Sticker on card
+const stickerGeo = new THREE.BoxGeometry(28 * S, 1 * S, P.cardW * S);
+const stickerOnCard = new THREE.Mesh(stickerGeo, mat.sticker);
+stickerOnCard.visible = false;
+scene.add(stickerOnCard);
+
+// Exit cards stack
+const exitCards = new THREE.Group();
+scene.add(exitCards);
+
+// ============================================================
+//  Labels (3D Text using sprites)
+// ============================================================
+function makeLabel(text, position, color = '#00d4ff', size = 0.15) {
+  const canvas2 = document.createElement('canvas');
+  canvas2.width = 512;
+  canvas2.height = 128;
+  const ctx = canvas2.getContext('2d');
+  ctx.fillStyle = color;
+  ctx.font = 'bold 48px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 256, 64);
+  const texture = new THREE.CanvasTexture(canvas2);
+  const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+  const sprite = new THREE.Sprite(spriteMat);
+  sprite.position.copy(position);
+  sprite.scale.set(size * 4, size, 1);
+  scene.add(sprite);
+  return sprite;
+}
+
+makeLabel('A — מסוע ראשי', mm(P.convLength / 2, P.convWidth / 2, beltTopZ + 30), '#3498db', 0.12);
+makeLabel('B — מחסנית', mm(P.magXOffset + magL / 2, P.convWidth / 2, magBaseZ + P.magH + 15), '#4ecdc4', 0.12);
+makeLabel('C — ראש הדבקה', mm(lhX + lhL / 2, P.convWidth / 2, lhBaseZ + lhH + 15), '#e94560', 0.12);
+makeLabel('D — יציאה', mm(P.convLength + P.exitLength / 2, P.convWidth / 2, beltTopZ + 20), '#2ecc71', 0.12);
+makeLabel('M1', mm(driveX, P.convWidth + 35, rollerCZ + 25), '#888', 0.08);
+makeLabel('M2 סרוו', mm(magCenterX, magYOff - 20, magBaseZ + 30), '#888', 0.08);
+makeLabel('M3', mm(rollX, lhW + 35, rollZ + 25), '#888', 0.08);
+makeLabel('S1', mm(P.magXOffset + P.cardL + 5, -8, beltTopZ + 25), '#00ff00', 0.08);
+makeLabel('S2', mm(P.labelXOffset - 10, -8, beltTopZ + 25), '#00ff00', 0.08);
+makeLabel('S3', mm(P.labelXOffset + 80, -8, beltTopZ + 25), '#00ff00', 0.08);
+
+// Direction arrow
+makeLabel('→→→  כיוון תנועת כרטיס  →→→', mm(P.convLength / 2, P.convWidth / 2, -8), '#444', 0.1);
+// Feeder mechanism labels (tilted magazine + servo gate)
+makeLabel('מגזין משופע 25°', mm(P.magXOffset + magL / 2, magYOff - 5, magBaseZ + P.magH + 5), '#4ecdc4', 0.06);
+makeLabel('↙ כובד ↙', mm(P.magXOffset + magL / 2 - 10, magYOff + magW / 2, magBaseZ + P.magH - 5), '#888', 0.06);
+makeLabel('שער סרוו ←', mm(P.magXOffset + magL + 18, magYOff + magW / 2, magBaseZ + 5), '#e74c3c', 0.07);
+makeLabel('יציאת כרטיס', mm(P.magXOffset + magL + 18, magYOff + magW / 2, magBaseZ - 5), '#f1c40f', 0.06);
+
+// ============================================================
+//  Simulation State Machine
+// ============================================================
+const SIM = {
+  speed: 5,
+  state: 'IDLE',
+  running: false,
+  singleCycle: false,
+  cardX: 55,
+  cardVisible: false,
+  cardsInMag: 12,
+  cycleCount: 0,
+  m1: false, m2: false, m3: false,
+  s1: false, s2: false, s3: false,
+  labelProgress: 0,
+  stickerApplied: false,
+  wheelAngle: 0,
+
+  // Key positions (mm)
+  FEEDER_X: 55,
+  FEED_END_X: P.magXOffset + magL + 10,
+  S1_X: P.magXOffset + P.cardL + 5,
+  S2_X: P.labelXOffset - 10,
+  LABEL_START_X: lhX + lhL / 2 - 14,
+  S3_X: P.labelXOffset + 80,
+  EXIT_X: P.convLength + P.exitLength - 20,
+};
+
+function changeState(s) {
+  SIM.state = s;
+  document.getElementById('stState').textContent = s;
+}
+
+function updateSensors() {
+  if (!SIM.cardVisible) {
+    SIM.s1 = SIM.cardsInMag > 0;
+    SIM.s2 = false;
+    SIM.s3 = false;
+  } else {
+    const lead = SIM.cardX + P.cardL;
+    SIM.s1 = SIM.cardsInMag > 0;
+    SIM.s2 = lead >= SIM.S2_X && SIM.cardX <= SIM.S2_X + 20;
+    SIM.s3 = lead >= SIM.S3_X && SIM.cardX <= SIM.S3_X + 50;
+  }
+  // Update UI
+  document.getElementById('s1dot').className = 'sensor-dot' + (SIM.s1 ? ' active' : '');
+  document.getElementById('s2dot').className = 'sensor-dot' + (SIM.s2 ? ' active' : '');
+  document.getElementById('s3dot').className = 'sensor-dot' + (SIM.s3 ? ' active' : '');
+
+  // Update 3D sensor colors
+  ['S1', 'S2', 'S3'].forEach((name, i) => {
+    const active = [SIM.s1, SIM.s2, SIM.s3][i];
+    const s = sensors[name];
+    if (s) {
+      s.left.material = active ? mat.sensorActive : mat.sensor;
+      s.right.material = active ? mat.sensorActive : mat.sensor;
+    }
+  });
+}
+
+function updateMotorUI() {
+  document.getElementById('stM1').textContent = 'M1 מסוע: ' + (SIM.m1 ? '▶' : '⏸');
+  document.getElementById('stM1').style.color = SIM.m1 ? '#2ecc71' : '#888';
+  document.getElementById('stM2').textContent = 'M2 סרוו: ' + (SIM.m2 ? '▶' : '⏸');
+  document.getElementById('stM2').style.color = SIM.m2 ? '#2ecc71' : '#888';
+  document.getElementById('stM3').textContent = 'M3 מדבקה: ' + (SIM.m3 ? '▶' : '⏸');
+  document.getElementById('stM3').style.color = SIM.m3 ? '#2ecc71' : '#888';
+}
+
+function tick() {
+  const spd = SIM.speed * 0.6;
+
+  switch (SIM.state) {
+    case 'IDLE':
+      SIM.m1 = false; SIM.m2 = false; SIM.m3 = false;
+      if (SIM.cardsInMag > 0 && (SIM.running || SIM.singleCycle)) {
+        SIM.cardsInMag--;
+        document.getElementById('stCards').textContent = SIM.cardsInMag;
+        SIM.cardX = SIM.FEEDER_X;
+        SIM.cardVisible = true;
+        SIM.stickerApplied = false;
+        SIM.labelProgress = 0;
+        // Update card stack visual
+        // Hide cards from stack as they're used
+        stackGroup.children.forEach((c, i) => { c.visible = i < SIM.cardsInMag; });
+        changeState('FEEDING');
+      }
+      break;
+
+    case 'FEEDING':
+      SIM.m1 = false; SIM.m2 = true; SIM.m3 = false;
+      SIM.cardX += spd * 0.8;
+      if (SIM.cardX >= SIM.FEED_END_X) {
+        changeState('TRANSPORT');
+      }
+      break;
+
+    case 'TRANSPORT':
+      SIM.m1 = true; SIM.m2 = false; SIM.m3 = false;
+      SIM.cardX += spd;
+      if (SIM.cardX + P.cardL >= SIM.S2_X) {
+        changeState('LABEL_APPROACH');
+      }
+      break;
+
+    case 'LABEL_APPROACH':
+      SIM.m1 = true; SIM.m2 = false; SIM.m3 = false;
+      SIM.cardX += spd;
+      if (SIM.cardX >= SIM.LABEL_START_X) {
+        changeState('LABELING');
+      }
+      break;
+
+    case 'LABELING':
+      SIM.m1 = true; SIM.m2 = false; SIM.m3 = true;
+      SIM.cardX += spd;
+      const labelFrames = 28 / spd;
+      SIM.labelProgress += 1 / labelFrames;
+      if (SIM.labelProgress >= 1) {
+        SIM.labelProgress = 1;
+        SIM.stickerApplied = true;
+        changeState('EXIT_TRANSPORT');
+      }
+      break;
+
+    case 'EXIT_TRANSPORT':
+      SIM.m1 = true; SIM.m2 = false; SIM.m3 = false;
+      SIM.cardX += spd;
+      if (SIM.cardX + P.cardL >= SIM.S3_X) {
+        changeState('EXIT');
+      }
+      break;
+
+    case 'EXIT':
+      SIM.m1 = true; SIM.m2 = false; SIM.m3 = false;
+      SIM.cardX += spd;
+      if (SIM.cardX >= SIM.EXIT_X) {
+        SIM.cardVisible = false;
+        SIM.m1 = false;
+        SIM.cycleCount++;
+        document.getElementById('stCycles').textContent = SIM.cycleCount;
+        addExitCard();
+        if (SIM.singleCycle) {
+          SIM.singleCycle = false;
+          SIM.running = false;
+          updateRunButton();
+        }
+        changeState('IDLE');
+      }
+      break;
+  }
+
+  // Animate wheels
+  if (SIM.m1 || SIM.m2) {
+    SIM.wheelAngle += 0.05 * SIM.speed;
+    idlerMesh.rotation.y = SIM.wheelAngle;
+    driveMesh.rotation.y = SIM.wheelAngle;
+  }
+  if (SIM.m2) {
+    // Servo gate opens (pivots down to release card)
+    servoGate.rotation.z = -Math.PI / 3;
+  } else {
+    // Servo gate closed (blocks exit)
+    servoGate.rotation.z = 0;
+  }
+  if (SIM.m3) {
+    // Entire label roll group rotates (visible via radial line)
+    labelRollGroup.rotation.z += 0.03 * SIM.speed;
+    pressRoller.rotation.y = SIM.wheelAngle * 0.7;
+  }
+
+  // Update card position — card sits on belt surface
+  if (SIM.cardVisible) {
+    activeCard.visible = true;
+    activeCard.position.set(
+      (SIM.cardX + P.cardL / 2) * S,
+      (beltTopZ + P.beltT + P.cardT / 2) * S,
+      (P.convWidth / 2) * S
+    );
+  } else {
+    activeCard.visible = false;
+  }
+
+  // Sticker on card
+  if (SIM.stickerApplied && SIM.cardVisible) {
+    stickerOnCard.visible = true;
+    stickerOnCard.position.set(
+      (SIM.cardX + P.cardL / 2) * S,
+      (beltTopZ + P.beltT + P.cardT + 0.5) * S,
+      (P.convWidth / 2) * S
+    );
+  } else if (SIM.labelProgress > 0 && !SIM.stickerApplied && SIM.cardVisible) {
+    stickerOnCard.visible = true;
+    stickerOnCard.scale.x = SIM.labelProgress;
+    stickerOnCard.position.set(
+      (SIM.cardX + P.cardL / 2) * S,
+      (beltTopZ + P.beltT + P.cardT + 0.5) * S,
+      (P.convWidth / 2) * S
+    );
+  } else {
+    stickerOnCard.visible = false;
+    stickerOnCard.scale.x = 1;
+  }
+
+  updateSensors();
+  updateMotorUI();
+}
+
+function addExitCard() {
+  const i = exitCards.children.length;
+  const cardMesh = new THREE.Mesh(cardGeo, mat.card.clone());
+  cardMesh.material.opacity = 0.6;
+  cardMesh.material.transparent = true;
+  const xOff = P.convLength + 20 + (i % 5) * 3;
+  const zOff = beltTopZ - P.exitDrop / 2 + (i % 5) * 1;
+  cardMesh.position.copy(mm(xOff, P.convWidth / 2, zOff));
+  cardMesh.rotation.z = -P.exitDrop / P.exitLength * 0.3;
+  exitCards.add(cardMesh);
+
+  // Sticker on exit card
+  const sMesh = new THREE.Mesh(stickerGeo, mat.sticker.clone());
+  sMesh.material.opacity = 0.7;
+  sMesh.material.transparent = true;
+  sMesh.position.copy(mm(xOff, P.convWidth / 2, zOff + 1));
+  sMesh.rotation.z = -P.exitDrop / P.exitLength * 0.3;
+  exitCards.add(sMesh);
+
+  if (exitCards.children.length > 16) {
+    exitCards.remove(exitCards.children[0]);
+    exitCards.remove(exitCards.children[0]);
+  }
+}
+
+// ============================================================
+//  View Controls
+// ============================================================
+const views = {
+  perspective: { pos: [3.5, 3, 3], target: [2, 0.5, 0.3] },
+  top: { pos: [2.2, 5, 0.3], target: [2.2, 0.5, 0.3] },
+  side: { pos: [2.2, 1, -3], target: [2.2, 0.5, 0.3] },
+  front: { pos: [-2, 1.2, 0.3], target: [2, 0.5, 0.3] },
+  label: { pos: [2.5, 2, 0.8], target: [2.5, 1.2, 0.3] },
+  feeder: { pos: [0.8, 1.5, -0.8], target: [0.9, 0.7, 0.3] },
+};
+
+let currentView = 'perspective';
+let targetCamPos = null;
+let targetCamTarget = null;
+let isXray = false;
+let isExploded = false;
+
+window.setView = function(name) {
+  const v = views[name];
+  if (!v) return;
+  currentView = name;
+  targetCamPos = new THREE.Vector3(...v.pos);
+  targetCamTarget = new THREE.Vector3(...v.target);
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+};
+
+window.toggleXray = function() {
+  isXray = !isXray;
+  document.getElementById('btnXray').classList.toggle('active', isXray);
+
+  moduleA.traverse(child => {
+    if (child.isMesh && child.material === mat.frame) {
+      child.material = isXray ? mat.frameTransp : mat.frame;
+    }
+  });
+  moduleB.traverse(child => {
+    if (child.isMesh && child.material === mat.frame) {
+      child.material = isXray ? mat.frameTransp : mat.frame;
+    }
+  });
+  moduleC.traverse(child => {
+    if (child.isMesh && child.material === mat.frame) {
+      child.material = isXray ? mat.frameTransp : mat.frame;
+    }
+  });
+  moduleD.traverse(child => {
+    if (child.isMesh && child.material === mat.frame) {
+      child.material = isXray ? mat.frameTransp : mat.frame;
+    }
+  });
+};
+
+window.toggleExplode = function() {
+  isExploded = !isExploded;
+  document.getElementById('btnExplode').classList.toggle('active', isExploded);
+};
+
+// ============================================================
+//  Machine Controls
+// ============================================================
+window.toggleRun = function() {
+  SIM.running = !SIM.running;
+  SIM.singleCycle = false;
+  updateRunButton();
+};
+
+window.stepOnce = function() {
+  SIM.singleCycle = true;
+  SIM.running = false;
+  updateRunButton();
+};
+
+window.resetMachine = function() {
+  SIM.running = false;
+  SIM.singleCycle = false;
+  SIM.state = 'IDLE';
+  SIM.cardVisible = false;
+  SIM.cardsInMag = 12;
+  SIM.cycleCount = 0;
+  SIM.labelProgress = 0;
+  SIM.stickerApplied = false;
+  SIM.m1 = SIM.m2 = SIM.m3 = false;
+  activeCard.visible = false;
+  stickerOnCard.visible = false;
+  stackMesh.scale.y = 1;
+  // Clear exit cards
+  while (exitCards.children.length) exitCards.remove(exitCards.children[0]);
+
+  document.getElementById('stState').textContent = 'IDLE';
+  document.getElementById('stCycles').textContent = '0';
+  document.getElementById('stCards').textContent = '12';
+  updateRunButton();
+  updateMotorUI();
+  updateSensors();
+};
+
+function updateRunButton() {
+  const btn = document.getElementById('btnStart');
+  if (SIM.running) {
+    btn.textContent = '⏸ עצור';
+    btn.classList.add('running');
+  } else {
+    btn.textContent = '▶ הפעל';
+    btn.classList.remove('running');
+  }
+}
+
+window.updateSpeed = function() {
+  SIM.speed = parseInt(document.getElementById('speedSlider').value);
+  document.getElementById('speedVal').textContent = SIM.speed + '×';
+};
+
+// ============================================================
+//  Animation Loop
+// ============================================================
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+
+  // Smooth camera transition
+  if (targetCamPos) {
+    camera.position.lerp(targetCamPos, 0.05);
+    controls.target.lerp(targetCamTarget, 0.05);
+    if (camera.position.distanceTo(targetCamPos) < 0.01) {
+      targetCamPos = null;
+      targetCamTarget = null;
+    }
+  }
+
+  // Explode animation
+  const explodeT = isExploded ? 1 : 0;
+  moduleB.position.lerp(isExploded ? explodeOffsets.B : new THREE.Vector3(0, 0, 0), 0.05);
+  moduleC.position.lerp(isExploded ? explodeOffsets.C : new THREE.Vector3(0, 0, 0), 0.05);
+  moduleD.position.lerp(isExploded ? explodeOffsets.D : new THREE.Vector3(0, 0, 0), 0.05);
+  motorsGroup.position.lerp(isExploded ? explodeOffsets.motors : new THREE.Vector3(0, 0, 0), 0.05);
+
+  // Run simulation
+  if (SIM.running || SIM.singleCycle || SIM.state !== 'IDLE') {
+    tick();
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// ============================================================
+//  Resize handler
+// ============================================================
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Start
+animate();
+
+</script>
+</body>
+</html>
