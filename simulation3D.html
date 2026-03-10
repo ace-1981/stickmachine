@@ -829,6 +829,7 @@ addCyl(feederParts.motor, M.shaft, feedCX, P.frameW + 5, feedCZ, 5, 14, 'z');
 // ══════════════════════════════════════════════════════════
 //  MODULE C — LABEL HEAD (ראש הדבקה)
 // ══════════════════════════════════════════════════════════
+let pressRollerBaseY = 0;
 const postH = P.labelPostH;
 const postW = 6;
 const lhBaseZ = beltTopZ + P.beltT;
@@ -982,6 +983,7 @@ addBearingSeat(beltParts.frame, lhCX + 8, pressLZ, 11, P.frameW - P.sideT, P.sid
 // Press brackets
 addBox(labelParts.press, M.frame, lhCX + 8 - 5, P.sideT, pressLZ - 10, 10, 4, 18);
 addBox(labelParts.press, M.frame, lhCX + 8 - 5, P.frameW - P.sideT - 4, pressLZ - 10, 10, 4, 18);
+pressRollerBaseY = pressLZ * S; // store for animation
 
 // Ribbon paths
 function addRibbon(x1, z1, x2, z2, mat, width) {
@@ -997,15 +999,16 @@ function addRibbon(x1, z1, x2, z2, mat, width) {
 addRibbon(rollX, rollZ - P.labelRollD / 2, g1X, g1Z, M.labelStrip, P.labelRollW);
 addRibbon(g1X, g1Z, g2X, g2Z, M.labelStrip, P.labelRollW);
 addRibbon(g2X, g2Z, peelX, peelZ + 1, M.labelStrip, P.labelRollW);
-// Free sticker edge hanging from peel tip (30×30mm, visible protruding downward toward card)
+// Dispensed label hovering at peel tip — extends tangentially FORWARD (horizontal)
 const stkSize = 35; // sticker size in mm
 const peelTipXPos = peelX + P.peelL + 10;
 const stickerEdgeMat = new THREE.MeshStandardMaterial({ color: 0xf06070, roughness: 0.3, metalness: 0.05, side: THREE.DoubleSide });
 const stickerEdge = new THREE.Mesh(
-  new THREE.BoxGeometry(stkSize * S, stkSize * 0.5 * S, stkSize * S),
+  new THREE.BoxGeometry(stkSize * S, 0.5 * S, stkSize * S),
   stickerEdgeMat
 );
-stickerEdge.position.set(peelTipXPos * S, (peelZ + 1 - stkSize * 0.2) * S, CY * S);
+// Label hovers horizontally forward from peel tip (tangential path)
+stickerEdge.position.set((peelTipXPos + stkSize * 0.35) * S, (peelZ + 1) * S, CY * S);
 labelParts.peel.add(stickerEdge);
 // Liner return
 const lsMat = M.liner.clone();
@@ -1017,9 +1020,31 @@ const g4X = lhX1 - 3, g4Z = rollZ - 18;
 addCyl(labelParts.strips, M.shaft, g4X, CY, g4Z, 10, P.labelRollW + 4, 'z');
 addSmallBearing(labelParts.strips, g4X, g4Z, 10, CY - P.labelRollW / 2 - 3, CY + P.labelRollW / 2 + 3);
 addRibbon(g3X, g3Z, g4X, g4Z, lsMat, P.labelRollW);
-// Liner collection spool
-addCyl(labelParts.strips, M.liner, g4X + 5, CY, g4Z + 8, 34, P.labelRollW, 'z');
-addCyl(labelParts.strips, M.shaft, g4X + 5, CY, g4Z + 8, 8, P.labelRollW + 4, 'z');
+// Liner collection (take-up) spool — this is the DRIVING motor spool
+const takeupSpoolGroup = new THREE.Group();
+takeupSpoolGroup.position.set((g4X + 5) * S, (g4Z + 8) * S, CY * S);
+labelParts.strips.add(takeupSpoolGroup);
+{
+  const tsCyl = new THREE.Mesh(
+    new THREE.CylinderGeometry(17 * S, 17 * S, P.labelRollW * S, 32),
+    M.liner
+  );
+  tsCyl.rotation.x = Math.PI / 2;
+  takeupSpoolGroup.add(tsCyl);
+  const tsShaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(4 * S, 4 * S, (P.labelRollW + 4) * S, 16),
+    M.shaft
+  );
+  tsShaft.rotation.x = Math.PI / 2;
+  takeupSpoolGroup.add(tsShaft);
+  // Rotation indicator line on take-up spool
+  const tsLine = new THREE.Mesh(
+    new THREE.BoxGeometry(17 * S, 1.5 * S, 1.5 * S),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.3 })
+  );
+  tsLine.position.set(8.5 * S, 0, 0);
+  takeupSpoolGroup.add(tsLine);
+}
 addSmallBearing(labelParts.strips, g4X + 5, g4Z + 8, 8, CY - P.labelRollW / 2 - 3, CY + P.labelRollW / 2 + 3);
 addRibbon(g4X, g4Z, g4X + 5, g4Z + 8 - 17, lsMat, P.labelRollW);
 // Liner collection spool bearing seats in side panels
@@ -1261,6 +1286,19 @@ const stickerOnCardMat = new THREE.MeshStandardMaterial({ color: 0xf06070, rough
 const stickerOnCard = new THREE.Mesh(stickerGeo, stickerOnCardMat);
 stickerOnCard.visible = false; scene.add(stickerOnCard);
 
+// Peeling sticker — deformable plane for realistic peel-off animation
+const peelSegX = 20;
+const peelStickerGeo = new THREE.PlaneGeometry(stickerSize * S, stickerSize * S, peelSegX, 1);
+peelStickerGeo.rotateX(-Math.PI / 2); // lie flat in XZ plane
+const peelStickerMat = new THREE.MeshStandardMaterial({
+  color: 0xf06070, roughness: 0.3, metalness: 0.05,
+  emissive: 0xf06070, emissiveIntensity: 0.15,
+  side: THREE.DoubleSide
+});
+const peelStickerMesh = new THREE.Mesh(peelStickerGeo, peelStickerMat);
+peelStickerMesh.visible = false;
+scene.add(peelStickerMesh);
+
 const exitCards = new THREE.Group(); scene.add(exitCards);
 
 // ══════════════════════════════════════════════════════════
@@ -1409,6 +1447,7 @@ makeLabel('רולרי הזנה (M1)', mm(exitRollerX, CY, exitRollerTopZ + 10), 
 makeLabel('→→→ M1 מזין | S1 מזהה | M2 מסיע →→→', mm((transStartX + driveX) / 2, CY, beltTopZ - 8), '#555', 0.06);
 makeLabel('פלטת קילוף', mm(peelX + P.peelL / 2, CY, peelZ + 8), '#DAA520', 0.04);
 makeLabel('רולר לחיצה ↑', mm(lhCX + 8, CY, pressLZ - 13), '#6A5ACD', 0.04);
+makeLabel('סליל איסוף לינר ⟳', mm(g4X + 5, CY, g4Z + 8 + 22), '#2ca52c', 0.04);
 
 // ══════════════════════════════════════════════════════════
 //  SIMULATION
@@ -1514,15 +1553,25 @@ function tick() {
     case 'ON_BELT':
       SIM.m1 = false; SIM.m2 = true; SIM.m3 = false;
       SIM.cardX += spd * 1.2;
-      if (SIM.cardX >= SIM.LABEL_POS) setState('STOP_LABEL');
+      if (SIM.cardX >= SIM.LABEL_POS - stkSize * 0.6) setState('DISPENSING');
       break;
-    case 'STOP_LABEL':
-      SIM.m1 = false; SIM.m2 = false; SIM.m3 = false;
-      setState('LABELING');
+    case 'DISPENSING':
+      // Take-up spool pulls liner → label advances tangentially from peel tip
+      // Card continues moving on belt toward label position
+      SIM.m1 = false; SIM.m2 = true; SIM.m3 = true;
+      SIM.cardX += spd * 0.45;
+      SIM.lblProg += 0.014 * SIM.speed;
+      if (SIM.lblProg >= 0.15) {
+        // Label is now hovering — card leading edge reaches peel tip
+        setState('LABELING');
+      }
       break;
     case 'LABELING':
-      SIM.m1 = false; SIM.m2 = false; SIM.m3 = true;
-      SIM.lblProg += 0.025 * SIM.speed;
+      // Card moves under the hovering label — press roller applies it
+      // Take-up spool continues pulling to fully separate label from liner
+      SIM.m1 = false; SIM.m2 = true; SIM.m3 = true;
+      SIM.cardX += spd * 0.35;
+      SIM.lblProg += 0.016 * SIM.speed;
       if (SIM.lblProg >= 1) {
         SIM.lblProg = 1; SIM.stkOn = true;
         setState('POST_LABEL');
@@ -1593,9 +1642,13 @@ function tick() {
     a.mesh.position.x = x * S;
     a.mesh.visible = (x >= idlerX - 5 && x <= driveX + 5);
   });
-  // Animate label roll
+  // Animate label system — take-up spool is the driver
   if (SIM.m3) {
-    labelRollGroup.rotation.z += 0.03 * SIM.speed;
+    // Take-up spool drives the system (spins faster — it's the motor)
+    takeupSpoolGroup.rotation.y += 0.06 * SIM.speed;
+    // Label roll unwinds (opposite direction, slower — larger diameter)
+    labelRollGroup.rotation.z -= 0.025 * SIM.speed;
+    // Press roller spins as card passes under it
     pressRoller.rotation.y += 0.04 * SIM.speed;
   }
 
@@ -1607,32 +1660,82 @@ function tick() {
     activeCard.visible = false;
   }
 
-  // Sticker peeling animation — sticker peels off peel plate tip down onto card
-  const peelTipX = peelX + P.peelL + 10;  // peel plate tip X
-  const stkZ = beltTopZ + P.beltT + P.cardT + 1.0;
-  const peelStartZ = peelZ + 1;  // Z of peel plate tip
+  // ── Label dispensing animation ──
+  // The label separates at the peel plate tip: it continues tangentially FORWARD
+  // (horizontally) while the liner turns sharply downward. The card moves under
+  // the hovering label, and the press roller applies it from below.
+  const peelTipX = peelX + P.peelL + 10;
+  const stkZ = beltTopZ + P.beltT + P.cardT + 0.5;  // card top surface
+  const peelTipZ = peelZ + 1;  // peel tip height
+  const peelH = peelTipZ - stkZ;  // height difference
   if (SIM.stkOn && SIM.cardVis) {
-    // Sticker fully applied on card — flat on top
+    // ── FULLY APPLIED: sticker flat on card, moves with it ──
     stickerOnCard.visible = true;
-    stickerOnCard.scale.set(1, 1, 1);
     stickerOnCard.position.set(SIM.cardX * S, stkZ * S, CY * S);
     stickerOnCard.rotation.set(0, 0, 0);
+    peelStickerMesh.visible = false;
     stickerEdge.visible = false;
+    pressRoller.position.y = pressRollerBaseY;
   } else if (SIM.lblProg > 0 && !SIM.stkOn && SIM.cardVis) {
-    // Sticker peeling — rotating down from peel tip to card
-    stickerOnCard.visible = true;
-    const prog = SIM.lblProg;
-    // Sticker pivots from peel tip downward (like a hinge at the tip)
-    const hingAngle = (1 - prog) * Math.PI * 0.45; // 0° when done, ~80° when starting
-    const curZ = peelStartZ + (stkZ - peelStartZ) * prog;
-    stickerOnCard.scale.set(1, 1, 1);
-    stickerOnCard.position.set(peelTipX * S, curZ * S, CY * S);
-    stickerOnCard.rotation.set(0, 0, hingAngle);
-    stickerEdge.visible = false;
-  } else {
+    // ── DISPENSING + LABELING: label peels off and applies to moving card ──
     stickerOnCard.visible = false;
-    stickerOnCard.rotation.set(0, 0, 0);
-    stickerEdge.visible = true;   // show protruding sticker edge when idle
+    peelStickerMesh.visible = true;
+    stickerEdge.visible = false;
+    const prog = SIM.lblProg;
+    // Smooth easing
+    const ep = prog < 0.5 ? 2 * prog * prog : 1 - Math.pow(-2 * prog + 2, 2) / 2;
+
+    // Position the deformable mesh at peel tip
+    peelStickerMesh.position.set(peelTipX * S, 0, CY * S);
+    const posAttr = peelStickerGeo.attributes.position;
+    const stkHalf = stickerSize / 2;
+
+    for (let col = 0; col <= peelSegX; col++) {
+      const t = col / peelSegX; // 0 = left (trailing at peel tip), 1 = right (leading edge)
+      // How much of the label has been dispensed (progresses left to right)
+      const dispenseT = ep; // fraction of label that's been dispensed
+
+      let yVal, xOff;
+      xOff = (t - 0.5) * stickerSize * S; // default X spread
+
+      if (t <= dispenseT) {
+        // This portion is already dispensed → resting on card surface
+        yVal = stkZ * S;
+      } else if (t <= dispenseT + 0.15) {
+        // Transition zone: curving from card surface up to peel tip height
+        const curveFrac = (t - dispenseT) / 0.15;
+        // Smooth cubic curve from card (0) to peel tip height (1)
+        const c = curveFrac * curveFrac * (3 - 2 * curveFrac); // smoothstep
+        yVal = stkZ * S + peelH * S * c;
+      } else {
+        // Still on the liner strip above — at peel tip height
+        yVal = peelTipZ * S;
+      }
+
+      for (let row = 0; row < 2; row++) {
+        const idx = row * (peelSegX + 1) + col;
+        posAttr.setY(idx, yVal);
+      }
+    }
+    posAttr.needsUpdate = true;
+    peelStickerGeo.computeVertexNormals();
+
+    // Shrink the static hovering sticker edge
+    const edgeScale = Math.max(0, 1 - prog * 1.8);
+    stickerEdge.scale.set(edgeScale, 1, 1);
+    stickerEdge.position.x = (peelTipXPos + stkSize * 0.35 * edgeScale) * S;
+
+    // Press roller engages — pushes card up against dispensed label
+    const engageAmt = Math.sin(prog * Math.PI) * 3.0;
+    pressRoller.position.y = pressRollerBaseY + engageAmt * S;
+  } else {
+    // ── IDLE: label hovering at peel tip, waiting for card ──
+    stickerOnCard.visible = false;
+    peelStickerMesh.visible = false;
+    stickerEdge.visible = true;
+    stickerEdge.scale.set(1, 1, 1);
+    stickerEdge.position.x = (peelTipXPos + stkSize * 0.35) * S;
+    pressRoller.position.y = pressRollerBaseY;
   }
 
   updateSensors();
