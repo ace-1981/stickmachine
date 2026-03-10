@@ -85,6 +85,7 @@ h1{color:#00d4ff;font-size:1.2em;margin-bottom:2px}
   <button class="view-btn" onclick="setView('feederClose')">📥 פידר - קלוז-אפ</button>
   <button class="view-btn" onclick="setView('feederCross')">🔍 פידר - חתך</button>
   <button class="view-btn" onclick="setView('label')">🏷️ אזור הדבקה</button>
+  <button class="view-btn" onclick="setView('peelClose')">🔎 קלוז-אפ פילינג</button>
   <hr class="sep">
   <button class="view-btn" id="btnXray" onclick="toggleXray()">👁 שקיפות</button>
   <button class="view-btn" id="btnExplodeAll" onclick="toggleExplodeAll()">💥 פירוק מלא</button>
@@ -105,7 +106,7 @@ h1{color:#00d4ff;font-size:1.2em;margin-bottom:2px}
   <ul>
     <li><span class="highlight">מחסנית אנכית</span> — כרטיסים מוערמים זה על זה</li>
     <li><span class="highlight">הזנת כובד (Gravity Feed)</span> — משקל הערימה עצמה לוחץ את הכרטיס התחתון על גלגל ההזנה, ללא צורך בקפיצים</li>
-    <li><span class="highlight">גלגל גומי (Feed Roller)</span> — נוגע רק בכרטיס התחתון, מסובב ע"י מנוע M1</li>
+    <li><span class="highlight">גלגל גומי (Feed Roller)</span> — נוגע רק בכרטיס התחתון, מסובב ע"י רצועת תזמון מהמסוע הראשי</li>
     <li><span class="highlight">משטח הפרדה (Separation Pad)</span> — חיכוך גבוה, מונע הזנה כפולה</li>
     <li><span class="highlight">חריץ יציאה</span> — גובה ≈ כרטיס אחד בלבד</li>
   </ul>
@@ -134,7 +135,7 @@ h1{color:#00d4ff;font-size:1.2em;margin-bottom:2px}
   </div>
   <div class="panel-card">
     <span class="panel-label">מנועים</span>
-    <div class="sensor-row"><span class="sensor-name" id="stM1">M1 פידר: ⏸</span></div>
+    <div class="sensor-row"><span class="sensor-name" id="stM1">רצועה (פידר): ⏸</span></div>
     <div class="sensor-row"><span class="sensor-name" id="stM2">M2 מסוע: ⏸</span></div>
     <div class="sensor-row"><span class="sensor-name" id="stM3">M3 מדבקה: ⏸</span></div>
   </div>
@@ -435,6 +436,35 @@ function addBeltWrap(cx) {
 addBeltWrap(idlerX);
 addBeltWrap(driveX);
 
+// Thin visible side drive belts (showing what connects the rollers)
+const sideBeltMat = new THREE.MeshStandardMaterial({
+  color: 0x33cc33, roughness: 0.6, metalness: 0.15,
+  emissive: 0x11aa11, emissiveIntensity: 0.25
+});
+const sbW = 3; // belt width
+const sbT = 1.5; // belt thickness
+[1, P.convWidth - sbW - 1].forEach(yPos => {
+  // Top run
+  addBox(convParts.belt, sideBeltMat, idlerX, yPos, rollerCZ + P.rollerD / 2, driveX - idlerX, sbW, sbT);
+  // Bottom run
+  addBox(convParts.belt, sideBeltMat, idlerX, yPos, rollerCZ - P.rollerD / 2 - sbT, driveX - idlerX, sbW, sbT);
+  // Wraps at each roller
+  [idlerX, driveX].forEach(cx => {
+    const r = P.rollerD / 2 + sbT;
+    const startA = (cx === idlerX) ? Math.PI / 2 : -Math.PI / 2;
+    const endA = (cx === idlerX) ? 3 * Math.PI / 2 : Math.PI / 2;
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, r * S, startA, endA, false);
+    shape.absarc(0, 0, P.rollerD / 2 * S, endA, startA, true);
+    shape.closePath();
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: sbW * S, bevelEnabled: false });
+    const mesh = new THREE.Mesh(geo, sideBeltMat);
+    mesh.position.set(cx * S, rollerCZ * S, yPos * S);
+    mesh.castShadow = true;
+    convParts.belt.add(mesh);
+  });
+});
+
 // M2 motor
 addBox(motorsGroup, mat.motor, driveX - P.nema17 / 2, P.convWidth + 15, rollerCZ - P.nema17 / 2, P.nema17, P.nema17Depth, P.nema17);
 addCyl(motorsGroup, mat.shaft, driveX, P.convWidth + 10, rollerCZ, 5, 15, 'z');
@@ -503,12 +533,54 @@ for (let i = 0; i < 12; i++) {
   cardStackMeshes.push(cMesh);
 }
 
-// --- M1 Motor ---
-addBox(feederParts.motor, mat.motor,
-  feedRollerCX - P.nema17 / 2, magY0 - mw - P.nema17Depth - 5, feedRollerCZ - P.nema17 / 2,
-  P.nema17, P.nema17Depth, P.nema17);
-addCyl(feederParts.motor, mat.shaft,
-  feedRollerCX, magY0 - mw - 3, feedRollerCZ, 5, 15, 'z');
+// --- Belt Drive from Conveyor (replaces M1 motor) ---
+const beltDriveMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.95, metalness: 0.05 });
+const pulleyBodyMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.3, metalness: 0.7 });
+const pulleyFlangeMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.4, metalness: 0.6 });
+const pulleyY = -10; // outside front frame
+
+// Extend idler shaft for pulley
+addCyl(feederParts.motor, mat.shaft, idlerX, -5, rollerCZ, 8, 14, 'z');
+// Idler pulley (grooved — hub + flanges)
+addCyl(feederParts.motor, pulleyBodyMat, idlerX, pulleyY, rollerCZ, 20, 8, 'z');
+addCyl(feederParts.motor, pulleyFlangeMat, idlerX, pulleyY - 4.5, rollerCZ, 26, 1.5, 'z');
+addCyl(feederParts.motor, pulleyFlangeMat, idlerX, pulleyY + 4.5, rollerCZ, 26, 1.5, 'z');
+
+// Feed roller pulley (grooved — hub + flanges)
+addCyl(feederParts.motor, mat.shaft, feedRollerCX, -5, feedRollerCZ, 5, 14, 'z');
+addCyl(feederParts.motor, pulleyBodyMat, feedRollerCX, pulleyY, feedRollerCZ, 16, 8, 'z');
+addCyl(feederParts.motor, pulleyFlangeMat, feedRollerCX, pulleyY - 4.5, feedRollerCZ, 22, 1.5, 'z');
+addCyl(feederParts.motor, pulleyFlangeMat, feedRollerCX, pulleyY + 4.5, feedRollerCZ, 22, 1.5, 'z');
+
+// Timing belt runs between pulleys
+const idlerPulleyR = 10, feedPulleyR = 8;
+{
+  // Upper belt run
+  const ux1 = idlerX, uz1 = rollerCZ + idlerPulleyR;
+  const ux2 = feedRollerCX, uz2 = feedRollerCZ + feedPulleyR;
+  const udx = ux2 - ux1, udz = uz2 - uz1;
+  const uLen = Math.sqrt(udx*udx + udz*udz);
+  const uAngle = Math.atan2(udz, udx);
+  const ubGeo = new THREE.BoxGeometry(uLen * S, 1.2 * S, 6 * S);
+  const ubMesh = new THREE.Mesh(ubGeo, beltDriveMat);
+  ubMesh.position.set((ux1+ux2)/2*S, (uz1+uz2)/2*S, pulleyY*S);
+  ubMesh.rotation.z = uAngle;
+  ubMesh.castShadow = true;
+  feederParts.motor.add(ubMesh);
+
+  // Lower belt run
+  const lx1 = idlerX, lz1 = rollerCZ - idlerPulleyR;
+  const lx2 = feedRollerCX, lz2 = feedRollerCZ - feedPulleyR;
+  const ldx = lx2 - lx1, ldz = lz2 - lz1;
+  const lLen = Math.sqrt(ldx*ldx + ldz*ldz);
+  const lAngle = Math.atan2(ldz, ldx);
+  const lbGeo = new THREE.BoxGeometry(lLen * S, 1.2 * S, 6 * S);
+  const lbMesh = new THREE.Mesh(lbGeo, beltDriveMat);
+  lbMesh.position.set((lx1+lx2)/2*S, (lz1+lz2)/2*S, pulleyY*S);
+  lbMesh.rotation.z = lAngle;
+  lbMesh.castShadow = true;
+  feederParts.motor.add(lbMesh);
+}
 
 // --- Guide Ramp ---
 const rampLen = 20;
@@ -620,30 +692,80 @@ function addRibbon(x1, z1, x2, z2, material, width) {
   labelParts.strips.add(mesh);
   return mesh;
 }
+// --- Web path: backing (liner) ribbon with stickers on top ---
+// Segment: Roll bottom → G1
 addRibbon(rollX, rollZ - P.labelRollD / 2, g1X, g1Z, mat.labelStrip, P.labelStripW);
+// Segment: G1 → G2 (long diagonal run)
 addRibbon(g1X, g1Z, g2X, g2Z, mat.labelStrip, P.labelStripW);
+// Segment: G2 → Peel plate (sticker + backing together)
 addRibbon(g2X, g2Z, peelX, peelZ + 1.5, mat.labelStrip, P.labelStripW);
-addRibbon(peelX, peelZ + 1.5, peelX + 48, peelZ + 1, mat.sticker, P.labelStripW);
+// Segment: On peel plate (sticker about to separate)
+const peelStickerMat = mat.sticker.clone();
+peelStickerMat.emissive = new THREE.Color(0xe94560);
+peelStickerMat.emissiveIntensity = 0.1;
+addRibbon(peelX, peelZ + 1.5, peelX + 48, peelZ + 1, peelStickerMat, P.labelStripW);
+// Separation point highlight (bright edge at peel tip)
+const peelEdgeMat = new THREE.MeshStandardMaterial({
+  color: 0xffff00, emissive: 0xffff00, emissiveIntensity: 0.7
+});
+addBox(labelParts.peelPlate, peelEdgeMat, peelX + 47, P.sideT + 4, peelZ - 0.5, 2, lhW - 2 * P.sideT - 8, 4);
+
+// Segment: After tip — liner only (backing paper returns to takeup)
 const lsMat = mat.liner.clone(); lsMat.transparent = true; lsMat.opacity = 0.45;
 addRibbon(peelX + 48, peelZ + 1, g3X, g3Z, lsMat, P.labelStripW);
 addRibbon(g3X, g3Z, g4X, g4Z, lsMat, P.labelStripW);
 
-// Liner spool
+// --- Static sticker marks on web (showing full sticker path) ---
+const stkW = P.cardW - 4;
+const stkLen = 22;
+[
+  // Roll → G1 (1 sticker)
+  { x1: rollX, z1: rollZ - P.labelRollD/2, x2: g1X, z2: g1Z, n: 1 },
+  // G1 → G2 (3 stickers — long diagonal)
+  { x1: g1X, z1: g1Z, x2: g2X, z2: g2Z, n: 3 },
+].forEach(seg => {
+  const angle = Math.atan2(seg.z2 - seg.z1, seg.x2 - seg.x1);
+  for (let i = 0; i < seg.n; i++) {
+    const t = (i + 0.5) / seg.n;
+    const sx = seg.x1 + (seg.x2 - seg.x1) * t;
+    const sz = seg.z1 + (seg.z2 - seg.z1) * t;
+    const sGeo = new THREE.BoxGeometry(stkLen * S, 1.5 * S, stkW * S);
+    const sMat = mat.sticker.clone();
+    sMat.transparent = true; sMat.opacity = 0.55;
+    const sMesh = new THREE.Mesh(sGeo, sMat);
+    sMesh.position.set(sx * S, sz * S, rollY * S);
+    sMesh.rotation.z = angle;
+    labelParts.strips.add(sMesh);
+  }
+});
+
+// Liner takeup spool
 const linerX = g4X + 5, linerZ = g4Z + 8;
 addTube(labelParts.strips, mat.liner, linerX, rollY, linerZ, 40, 18, P.labelStripW);
 addCyl(labelParts.strips, mat.shaft, linerX, rollY, linerZ, 8, P.labelStripW + 4, 'z');
 addRibbon(g4X, g4Z, linerX, linerZ - 20, lsMat, P.labelStripW);
 
-// Sticker marks
-for (let i = 0; i < 3; i++) {
-  const t = 0.25 + i * 0.25;
-  const sx = g2X + (peelX - g2X) * t;
-  const sz = g2Z + (peelZ + 1.5 - g2Z) * t;
-  const sGeo = new THREE.BoxGeometry(8 * S, 1 * S, (P.cardW - 4) * S);
-  const sMesh = new THREE.Mesh(sGeo, mat.sticker);
-  sMesh.position.set(sx * S, sz * S, rollY * S);
-  sMesh.rotation.z = Math.atan2(peelZ + 1.5 - g2Z, peelX - g2X);
-  labelParts.strips.add(sMesh);
+// ============================================================
+//  ANIMATED WEB STICKERS + PEEL CONSTANTS
+// ============================================================
+const peelTipX_mm = peelX + 48;
+const peelTipZ_mm = peelZ + 1;
+const cardSurfZ_mm = beltTopZ + P.beltT + P.cardT + 0.3;
+const peelDrop_mm = peelTipZ_mm - cardSurfZ_mm;
+const STICKER_LEN_mm = 28;
+const STICKER_W_mm = P.cardW - 4;
+const webRibbonAngle = Math.atan2(peelZ + 1.5 - g2Z, peelX - g2X);
+
+// Animated sticker patches on the label web (G2 → peel plate)
+const webStickerMeshes = [];
+for (let wi = 0; wi < 4; wi++) {
+  const wGeo = new THREE.BoxGeometry(STICKER_LEN_mm * 0.8 * S, 1.3 * S, STICKER_W_mm * S);
+  const wMat = mat.sticker.clone();
+  wMat.transparent = true; wMat.opacity = 0.7;
+  const wm = new THREE.Mesh(wGeo, wMat);
+  wm.rotation.z = webRibbonAngle;
+  labelParts.strips.add(wm);
+  webStickerMeshes.push({ mesh: wm, t: 0.05 + wi * 0.23 });
 }
 
 // M3 motor
@@ -690,6 +812,43 @@ activeCard.visible = false; activeCard.castShadow = true;
 scene.add(activeCard);
 
 const stickerGeo = new THREE.BoxGeometry(28 * S, 1 * S, P.cardW * S);
+
+// ============================================================
+//  PEELING MECHANISM MESHES
+// ============================================================
+
+// Unpeeled portion — still on peel plate (shrinks as sticker peels off)
+const unpeeledSticker = new THREE.Mesh(
+  new THREE.BoxGeometry(STICKER_LEN_mm * S, 1 * S, STICKER_W_mm * S),
+  (() => { const m = mat.sticker.clone(); m.emissive = new THREE.Color(0xe94560); m.emissiveIntensity = 0.15; return m; })()
+);
+unpeeledSticker.visible = false;
+scene.add(unpeeledSticker);
+
+// Curve segments at peel tip (smooth bend from plate down to card)
+const N_PEEL_CURVE = 6;
+const peelCurveMeshes = [];
+for (let ci = 0; ci < N_PEEL_CURVE; ci++) {
+  const cMat = mat.sticker.clone();
+  cMat.emissive = new THREE.Color(0xff4466);
+  cMat.emissiveIntensity = 0.4;
+  const cMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(3 * S, 0.7 * S, STICKER_W_mm * S), cMat
+  );
+  cMesh.visible = false; cMesh.castShadow = true;
+  scene.add(cMesh);
+  peelCurveMeshes.push(cMesh);
+}
+
+// Applied portion — growing on card surface
+const appliedStickerMesh = new THREE.Mesh(
+  new THREE.BoxGeometry(STICKER_LEN_mm * S, 0.5 * S, STICKER_W_mm * S),
+  mat.sticker.clone()
+);
+appliedStickerMesh.visible = false;
+scene.add(appliedStickerMesh);
+
+// Full sticker (shown after labeling complete)
 const stickerOnCard = new THREE.Mesh(stickerGeo, mat.sticker);
 stickerOnCard.visible = false;
 scene.add(stickerOnCard);
@@ -721,7 +880,7 @@ makeLabel('A — פידר כרטיסים', mm(feederX, fY, magBaseZ + P.magH + 2
 makeLabel('B — מסוע ראשי', mm(P.convLength / 2, P.convWidth / 2, beltTopZ + 30), '#3498db', 0.12);
 makeLabel('C — ראש הדבקה', mm(lhX + lhL / 2, P.convWidth / 2, lhBaseZ + lhH + 15), '#e94560', 0.12);
 makeLabel('D — יציאה', mm(P.convLength + P.exitLength / 2, P.convWidth / 2, beltTopZ + 20), '#2ecc71', 0.12);
-makeLabel('M1 פידר', mm(feedRollerCX, magY0 - mw - P.nema17Depth / 2, feedRollerCZ + 30), '#888', 0.08);
+makeLabel('רצועת הנעה', mm(feedRollerCX - 20, pulleyY, rollerCZ + 22), '#888', 0.08);
 makeLabel('M2 מסוע', mm(driveX, P.convWidth + 35, rollerCZ + 25), '#888', 0.08);
 makeLabel('M3 מדבקות', mm(rollX, lhW + 35, rollZ + 25), '#888', 0.08);
 makeLabel('S1', mm(s1X, -8, beltTopZ + 25), '#00ff00', 0.08);
@@ -780,14 +939,14 @@ function updateSensors() {
 }
 
 function updateMotorUI() {
-  document.getElementById('stM1').textContent = 'M1 פידר: ' + (SIM.m1 ? '▶ מסובב' : '⏸');
-  document.getElementById('stM1').style.color = SIM.m1 ? '#2ecc71' : '#888';
+  document.getElementById('stM1').textContent = 'רצועה (פידר): ' + (SIM.m2 ? '▶ מונע' : '⏸');
+  document.getElementById('stM1').style.color = SIM.m2 ? '#f39c12' : '#888';
   document.getElementById('stM2').textContent = 'M2 מסוע: ' + (SIM.m2 ? '▶' : '⏸');
   document.getElementById('stM2').style.color = SIM.m2 ? '#2ecc71' : '#888';
   document.getElementById('stM3').textContent = 'M3 מדבקה: ' + (SIM.m3 ? '▶' : '⏸');
   document.getElementById('stM3').style.color = SIM.m3 ? '#2ecc71' : '#888';
   document.getElementById('stFeeder').textContent =
-    'גלגל: ' + (SIM.m1 ? '🔄' : '⏸') + ' | ' + SIM.cardsInMag + ' כרטיסים';
+    'גלגל: ' + (SIM.m2 ? '🔄 (רצועה)' : '⏸') + ' | ' + SIM.cardsInMag + ' כרטיסים';
 }
 
 function tick() {
@@ -807,7 +966,7 @@ function tick() {
       }
       break;
     case 'FEED_ROLLER':
-      SIM.m1 = true; SIM.m2 = false; SIM.m3 = false;
+      SIM.m1 = false; SIM.m2 = true; SIM.m3 = false; // belt-driven from conveyor
       SIM.cardX += spd * 0.5;
       if (SIM.cardX >= SIM.FEEDER_EXIT_X) changeState('TRANSPORT_TO_S1');
       break;
@@ -851,9 +1010,9 @@ function tick() {
       break;
   }
 
-  // Animate feed roller
-  if (SIM.m1) {
-    SIM.feedRollerAngle += 0.08 * SIM.speed;
+  // Animate feed roller (belt-driven from conveyor M2)
+  if (SIM.m2) {
+    SIM.feedRollerAngle += 0.06 * SIM.speed; // gear ratio ~0.75
     feedRoller.rotation.y = SIM.feedRollerAngle;
   }
   // Animate conveyor rollers
@@ -881,15 +1040,69 @@ function tick() {
     activeCard.visible = false;
   }
 
-  // Sticker
-  if (SIM.stickerApplied && SIM.cardVisible) {
+  // ── Web sticker animation (advance along G2→peel path) ──
+  webStickerMeshes.forEach(ws => {
+    if (SIM.m3) ws.t += 0.004 * SIM.speed;
+    if (ws.t > 1.0) ws.t -= 0.92;
+    const wpx = g2X + (peelX - g2X) * ws.t;
+    const wpz = g2Z + (peelZ + 1.5 - g2Z) * ws.t;
+    ws.mesh.position.set(wpx * S, wpz * S, rollY * S);
+  });
+
+  // ── Peeling animation ──
+  const lp = SIM.labelProgress;
+  if (lp > 0 && lp < 1 && SIM.cardVisible && !SIM.stickerApplied) {
+    // Unpeeled portion on peel plate (shrinks — right edge at peel tip)
+    const uf = 1 - lp;
+    unpeeledSticker.visible = true;
+    unpeeledSticker.scale.x = Math.max(uf, 0.01);
+    unpeeledSticker.position.set(
+      (peelTipX_mm - STICKER_LEN_mm * uf / 2) * S,
+      (peelTipZ_mm + 0.5) * S, fY * S
+    );
+
+    // Curve at peel tip — smooth S-bend from plate down to card
+    for (let ci = 0; ci < N_PEEL_CURVE; ci++) {
+      const seg = peelCurveMeshes[ci];
+      seg.visible = true;
+      const ct = (ci + 0.5) / N_PEEL_CURVE;
+      const smooth = ct * ct * (3 - 2 * ct); // smoothstep
+      const cx = peelTipX_mm + ct * 14;
+      const cz = peelTipZ_mm - peelDrop_mm * smooth;
+      const dSmooth = 6 * ct * (1 - ct);
+      const cAngle = -Math.atan2(peelDrop_mm * dSmooth / N_PEEL_CURVE, 14 / N_PEEL_CURVE);
+      seg.position.set(cx * S, cz * S, fY * S);
+      seg.rotation.z = cAngle;
+    }
+
+    // Applied portion on card (grows)
+    if (lp > 0.05) {
+      appliedStickerMesh.visible = true;
+      appliedStickerMesh.scale.x = lp;
+      appliedStickerMesh.position.set(
+        (SIM.cardX + P.cardL / 2) * S,
+        (cardSurfZ_mm + 0.1) * S, fY * S
+      );
+    } else { appliedStickerMesh.visible = false; }
+
+    stickerOnCard.visible = false;
+  } else if (SIM.stickerApplied && SIM.cardVisible) {
+    // Labeling complete — full sticker flat on card
+    unpeeledSticker.visible = false;
+    peelCurveMeshes.forEach(s => s.visible = false);
+    appliedStickerMesh.visible = false;
     stickerOnCard.visible = true; stickerOnCard.scale.x = 1;
-    stickerOnCard.position.set((SIM.cardX + P.cardL / 2) * S, (beltTopZ + P.beltT + P.cardT + 0.5) * S, (P.convWidth / 2) * S);
-  } else if (SIM.labelProgress > 0 && !SIM.stickerApplied && SIM.cardVisible) {
-    stickerOnCard.visible = true; stickerOnCard.scale.x = SIM.labelProgress;
-    stickerOnCard.position.set((SIM.cardX + P.cardL / 2) * S, (beltTopZ + P.beltT + P.cardT + 0.5) * S, (P.convWidth / 2) * S);
+    stickerOnCard.position.set(
+      (SIM.cardX + P.cardL / 2) * S,
+      (beltTopZ + P.beltT + P.cardT + 0.5) * S,
+      (P.convWidth / 2) * S
+    );
   } else {
-    stickerOnCard.visible = false; stickerOnCard.scale.x = 1;
+    // No labeling active
+    unpeeledSticker.visible = false;
+    peelCurveMeshes.forEach(s => s.visible = false);
+    appliedStickerMesh.visible = false;
+    stickerOnCard.visible = false;
   }
 
   updateSensors();
@@ -924,6 +1137,7 @@ const views = {
   feederClose: { pos: [0.4, 1.5, -0.6], target: [0.35, 0.75, 0.3] },
   feederCross: { pos: [0.35, 1.0, -1.2], target: [0.35, 0.8, 0.3] },
   label: { pos: [2.5, 2, 0.8], target: [2.5, 1.2, 0.3] },
+  peelClose: { pos: [3.5, 1.1, -0.3], target: [3.15, 0.85, 0.3] },
 };
 
 let currentView = 'perspective';
@@ -1018,6 +1232,9 @@ window.resetMachine = function() {
   SIM.labelProgress = 0; SIM.stickerApplied = false;
   SIM.m1 = SIM.m2 = SIM.m3 = false;
   activeCard.visible = false; stickerOnCard.visible = false;
+  unpeeledSticker.visible = false;
+  peelCurveMeshes.forEach(s => s.visible = false);
+  appliedStickerMesh.visible = false;
   cardStackMeshes.forEach(c => c.visible = true);
   while (exitCards.children.length) exitCards.remove(exitCards.children[0]);
   document.getElementById('stState').textContent = 'IDLE';

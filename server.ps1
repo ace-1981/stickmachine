@@ -10,10 +10,10 @@ while ($listener.IsListening) {
 
     $localPath = $request.Url.LocalPath
     if ($localPath -eq '/') {
-        $localPath = '/simulation_3D.html'
+        $localPath = '/%D7%A1%D7%99%D7%9E%D7%95%D7%9C%D7%A6%D7%99%D7%94_3D.html'
     }
 
-    $filePath = Join-Path 'c:\Users\Administrator\Desktop\stickmachine' ($localPath.TrimStart('/'))
+    $filePath = Join-Path $PSScriptRoot ($localPath.TrimStart('/'))
 
     if (Test-Path $filePath) {
         $content = [System.IO.File]::ReadAllBytes($filePath)
