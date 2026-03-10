@@ -372,6 +372,21 @@ function addCyl(g, m, cx, cy, cz, dia, len, axis) {
   mesh.castShadow = true; g.add(mesh); return mesh;
 }
 
+// Create a cylinder that can be animated (rotation around its own axis).
+// Returns a Group; animate via group.rotation.z for axis='z', etc.
+function addSpinCyl(g, m, cx, cy, cz, dia, len, axis) {
+  const grp = new THREE.Group();
+  grp.position.copy(mm(cx, cy, cz));
+  const geo = new THREE.CylinderGeometry(dia/2*S, dia/2*S, len*S, 32);
+  const mesh = new THREE.Mesh(geo, m);
+  if (axis === 'x') mesh.rotation.z = Math.PI / 2;
+  if (axis === 'z') mesh.rotation.x = Math.PI / 2;
+  mesh.castShadow = true;
+  grp.add(mesh);
+  g.add(grp);
+  return grp;
+}
+
 // ── Open ball bearing (visible balls + brass cage) ──
 // Like the reference images: chrome outer ring, chrome inner ring,
 // polished steel balls visible between them, brass cage holding balls.
@@ -429,36 +444,12 @@ function createBearingAtY(group, cx, cz, shaftD, yPos, bOD, bW) {
   }
 }
 
-// Pillow-block bearing housing (UCP type — cast iron, bolted to frame)
+// Bearing pressed into frame wall (no pillow-block — 3D-printed frame is the housing)
 function addBearing(group, cx, cz, shaftD, y1, y2) {
   const bOD = shaftD + 10;
   const bW = 6;
-  const hW = bOD + 8;
-  const hH = bOD + 4;
-  const hD = bW + 4;
-  const footW = hW + 8;
-  const footH = 3;
-  
   [y1, y2].forEach(yPos => {
     createBearingAtY(group, cx, cz, shaftD, yPos, bOD, bW);
-    // Housing body + rounded top
-    addBox(group, M.bearingHousing, cx - hW / 2, yPos - hD / 2, cz - hH / 2, hW, hD, hH);
-    addCyl(group, M.bearingHousing, cx, yPos, cz, Math.min(hW, hH) * 0.92, hD + 0.5, 'z');
-    // Flange faces
-    addCyl(group, M.bearingFlange, cx, yPos - hD / 2 - 0.2, cz, bOD + 3, 0.5, 'z');
-    addCyl(group, M.bearingFlange, cx, yPos + hD / 2 + 0.2, cz, bOD + 3, 0.5, 'z');
-    // Base foot
-    addBox(group, M.bearingHousing, cx - footW / 2, yPos - hD / 2, cz - hH / 2 - footH, footW, hD, footH);
-    // Mounting bolts
-    const bx1 = cx - footW / 2 + 3, bx2 = cx + footW / 2 - 3;
-    const bz = cz - hH / 2 - footH / 2;
-    addCyl(group, M.bearingBolt, bx1, yPos, bz, 4, hD + 1, 'z');
-    addCyl(group, M.bearingBolt, bx2, yPos, bz, 4, hD + 1, 'z');
-    addCyl(group, M.bearingBolt, bx1, yPos - hD / 2 - 0.5, bz, 6, 1.5, 'z');
-    addCyl(group, M.bearingBolt, bx2, yPos - hD / 2 - 0.5, bz, 6, 1.5, 'z');
-    // Grease nipple
-    addCyl(group, M.bearingGrease, cx, yPos, cz + hH / 2 + 1, 2.5, 3, 'y');
-    addCyl(group, M.bearingGrease, cx, yPos, cz + hH / 2 + 3.5, 3.5, 1, 'y');
   });
 }
 
@@ -553,11 +544,11 @@ addCyl(beltParts.rollers, M.shaft, idlerX, CY, rollerCZ, 6, P.frameW + 8, 'z');
 const driveMesh = addCyl(beltParts.rollers, M.roller, driveX, CY, rollerCZ, P.rollerD, P.frameW - 2 * P.sideT - 4, 'z');
 addCyl(beltParts.rollers, M.shaft, driveX, CY, rollerCZ, 6, P.frameW + 8, 'z');
 
-// Bearing mounts + bearings + bearing seats in frame
+// Bearings flush with frame walls + bearing seat holes
 [idlerX, driveX].forEach(rx => {
-  addBox(beltParts.rollers, M.frame, rx - 8, 0, rollerCZ - P.rollerD / 2 - 2, 16, P.sideT + 3, P.rollerD + 4);
-  addBox(beltParts.rollers, M.frame, rx - 8, P.frameW - P.sideT - 3, rollerCZ - P.rollerD / 2 - 2, 16, P.sideT + 3, P.rollerD + 4);
-  addBearing(beltParts.rollers, rx, rollerCZ, 6, P.sideT + 1, P.frameW - P.sideT - 1);
+  addBearing(beltParts.rollers, rx, rollerCZ, 6, P.sideT / 2, P.frameW - P.sideT / 2);
+  addBearingSeat(beltParts.frame, rx, rollerCZ, 16 + 2, 0, P.sideT);
+  addBearingSeat(beltParts.frame, rx, rollerCZ, 16 + 2, P.frameW - P.sideT, P.sideT);
 });
 
 // ── Belt (flat on top, flat on bottom, wraps around rollers) ──
@@ -2236,6 +2227,7 @@ function startPresAudio() {
     lfo.start();
 
     // Fade in
+    masterGain.gain.setValueAtTime(0, ctx.currentTime);
     masterGain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 3);
     PRES._oscs = oscs;
     PRES._lfo = lfo;
