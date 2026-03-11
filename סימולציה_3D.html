@@ -57,13 +57,13 @@ h1{color:#00d4ff;font-size:1.15em;margin:0}
 .pres-skip:hover{background:rgba(255,255,255,0.25)}
 .pres-scene-num{position:absolute;top:24px;left:30px;color:rgba(255,255,255,0.35);font-size:0.7em}
 .pres-vignette{position:absolute;top:0;left:0;width:100%;height:100%;box-shadow:inset 0 0 150px rgba(0,0,0,0.45);pointer-events:none}
-.version-tag{position:absolute;top:8px;right:14px;color:#000;font-size:0.85em;font-weight:bold;z-index:15;pointer-events:none;text-shadow:0 0 3px rgba(255,255,255,0.6)}
+.version-tag{position:absolute;top:8px;right:14px;color:#ffdd00;font-size:0.85em;font-weight:bold;z-index:15;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,0.8)}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 
-<div class="version-tag">v1001</div>
+<div class="version-tag">v1008</div>
 
 <div class="hdr">
   <h1>סימולציה תלת-ממדית — מכונת הדבקת מדבקות לכרטיסי אשראי</h1>
@@ -99,8 +99,8 @@ h1{color:#00d4ff;font-size:1.15em;margin:0}
   <hr class="sep">
   <button class="vb" onclick="showInfo()">ℹ️ איך המכונה עובדת?</button>
   <div style="background:rgba(15,22,42,0.93);padding:6px 10px;border-radius:7px;border:1px solid #1a3a6a">
-    <label style="color:#777;font-size:0.7em;display:block;margin-bottom:3px">⬆⬇ גובה ראש הדבקה (מ"מ)</label>
-    <input type="range" id="labelHeightR" min="-30" max="30" value="0" oninput="setLabelHeight()" style="width:100%;accent-color:#2ecc71">
+    <label style="color:#777;font-size:0.7em;display:block;margin-bottom:3px">⬆⬇ גובה ראש הדבקה — כוונון ברגים (מ"מ)</label>
+    <input type="range" id="labelHeightR" min="0" max="30" value="0" oninput="setLabelHeight()" style="width:100%;accent-color:#2ecc71">
     <div style="text-align:center;color:#2ecc71;font-size:0.75em;font-weight:bold" id="labelHeightVal">0 מ"מ</div>
   </div>
   <button class="vb" style="background:#e94560;color:#fff;border-color:#e94560;font-weight:bold" onclick="startPresentation()">🎬 מצגת למשקיעים</button>
@@ -878,29 +878,24 @@ const panelW = lhX1 - lhX0 + postW;  // X-direction width of panel
 const panelH = postH;                 // Z-direction height
 
 // ── Component positions (machine coordinates: X = left-right, Z = up) ──
-// RIGHT: Supply roll at top-right (large roll)
-const rollX = lhX1 - 5;
+// LEFT: Supply roll at top-left (large roll with labels)
+const rollX = lhX0 + 5;
 const rollZ = lhBaseZ + postH - 30;
 
-// LEFT: Take-up spool at top-left (smaller, driven by M3)
-const tsX = lhX0 + 10;
-const tsZ = lhBaseZ + postH - 45;
+// RIGHT: Take-up spool at top-right (smaller, driven by M3, collects bare liner)
+const tsX = lhX1 - 10;
+const tsZ = lhBaseZ + postH - 40;
 
 // Peel plate — below and centered, just above belt surface
 const peelX = lhCX - P.peelL / 2;
 const peelZ = lhBaseZ + P.cardT + 3;
 
-// Guide roller (one small roller between peel plate and take-up spool)
-// Routes liner from peel plate back UP toward take-up
-const gr1X = lhX0 + 18;
-const gr1Z = lhBaseZ + 25;
-
-// Tension roller (small, rubber-coated, orange — provides strip tension)
-const trX = lhX0 + 12;
-const trZ = lhBaseZ + postH * 0.5;
+// Tension roller (small, rubber-coated, orange — on RIGHT side between U-turn and take-up)
+const trX = lhX1 - 8;
+const trZ = lhBaseZ + 30;
 
 // ═══════════════════════════════════════════════════
-//  SUPPLY ROLL — RIGHT side, large (labels on liner backing)
+//  SUPPLY ROLL — LEFT side, large (labels on liner backing)
 // ═══════════════════════════════════════════════════
 const labelRollGroup = new THREE.Group();
 labelRollGroup.position.set(rollX * S, rollZ * S, CY * S);
@@ -950,7 +945,7 @@ for (let a = 0; a < 12; a++) {
 }
 
 // ═══════════════════════════════════════════════════
-//  TAKE-UP SPOOL — LEFT side (driven by M3, collects bare liner)
+//  TAKE-UP SPOOL — RIGHT side (driven by M3, collects bare liner)
 // ═══════════════════════════════════════════════════
 const takeupSpoolGroup = new THREE.Group();
 takeupSpoolGroup.position.set(tsX * S, tsZ * S, CY * S);
@@ -1046,14 +1041,7 @@ stickerEdge.position.set((peelTipXPos + stkSize * 0.35) * S, (peelZ + 1) * S, CY
 labelParts.peel.add(stickerEdge);
 
 // ═══════════════════════════════════════════════════
-//  GUIDE ROLLER — routes liner from peel plate back toward take-up
-// ═══════════════════════════════════════════════════
-addCyl(labelParts.strips, M.roller, gr1X, CY, gr1Z, 12, P.labelRollW + 4, 'z');
-addCyl(labelParts.strips, M.shaft, gr1X, CY, gr1Z, 5, P.frameW - 2 * P.sideT, 'z');
-addSmallBearing(labelParts.strips, gr1X, gr1Z, 5, CY - P.labelRollW / 2 - 3, CY + P.labelRollW / 2 + 3);
-
-// ═══════════════════════════════════════════════════
-//  TENSION ROLLER — small orange/rubber roller for strip tension
+//  TENSION ROLLER — small orange/rubber roller (RIGHT side, between U-turn and take-up)
 // ═══════════════════════════════════════════════════
 const tensionRubberMat = new THREE.MeshStandardMaterial({ color: 0xcc4422, roughness: 0.7, metalness: 0.05 });
 addCyl(labelParts.strips, tensionRubberMat, trX, CY, trZ, 10, P.labelRollW, 'z');
@@ -1074,68 +1062,58 @@ function addRibbon(x1, z1, x2, z2, mat, width) {
   labelParts.strips.add(mesh); return mesh;
 }
 
-// PATH: Supply roll (right) → DOWN to peel plate — appears as continuous solid strip
-// Upper section: individual stickers (separate small marks)
-const stripPath_x1 = rollX, stripPath_z1 = rollZ - P.labelRollD / 2;
-const stripPath_x2 = peelX + P.peelL, stripPath_z2 = peelZ + P.peelT + 0.3;
-// Base liner ribbon (full length, thin)
-addRibbon(stripPath_x1, stripPath_z1, stripPath_x2, stripPath_z2, M.liner, P.labelRollW);
-// Dense sticker marks on the strip — closer to peel plate they merge into solid
-const stripDx = stripPath_x2 - stripPath_x1, stripDz = stripPath_z2 - stripPath_z1;
-const totalStripLen = Math.sqrt(stripDx * stripDx + stripDz * stripDz);
-const stripA = Math.atan2(stripDz, stripDx);
-const numStripStk = 8;
-for (let si = 0; si < numStripStk; si++) {
-  const t = (si + 0.5) / numStripStk;
-  const sLen = t < 0.5 ? stkSize * 0.7 : stkSize * 0.85 + (t - 0.5) * stkSize * 0.3; // grows denser toward peel
-  const sx = stripPath_x1 + stripDx * t;
-  const sz = stripPath_z1 + stripDz * t;
-  const sMat = t > 0.6 ? M.sticker : M.sticker.clone();
-  if (t <= 0.6) { sMat.transparent = true; sMat.opacity = 0.85; }
-  const sGeo = new THREE.BoxGeometry(sLen * S, 0.7 * S, stkSize * S);
-  const sMesh = new THREE.Mesh(sGeo, sMat);
-  sMesh.position.set(sx * S, sz * S, CY * S);
-  sMesh.rotation.z = stripA;
+// PATH: Supply roll (LEFT top) → straight DOWN to peel plate LEFT edge → RIGHT across plate
+// Card moves LEFT→RIGHT, sticker peels off at RIGHT sharp edge.
+
+// Single segment: Supply roll bottom → LEFT edge of peel plate (straight down)
+const seg1_x1 = rollX, seg1_z1 = rollZ - P.labelRollD / 2;
+const seg1_x2 = peelX, seg1_z2 = peelZ + P.peelT + 0.3;
+addRibbon(seg1_x1, seg1_z1, seg1_x2, seg1_z2, M.liner, P.labelRollW);
+// Sticker marks on the supply → peel segment
+const seg1Dx = seg1_x2 - seg1_x1, seg1Dz = seg1_z2 - seg1_z1;
+const seg1A = Math.atan2(seg1Dz, seg1Dx);
+for (let si = 0; si < 6; si++) {
+  const t = (si + 0.5) / 6;
+  const sGeo = new THREE.BoxGeometry(stkSize * 0.7 * S, 0.7 * S, stkSize * S);
+  const sMesh = new THREE.Mesh(sGeo, M.sticker);
+  sMesh.position.set((seg1_x1 + seg1Dx * t) * S, (seg1_z1 + seg1Dz * t) * S, CY * S);
+  sMesh.rotation.z = seg1A;
   labelParts.strips.add(sMesh);
 }
-// Across peel plate top surface — continuous solid strip
-addRibbon(peelX + P.peelL, peelZ + P.peelT + 0.3, peelX, peelZ + P.peelT + 0.3, M.labelStrip, P.labelRollW);
+// Across peel plate surface LEFT → RIGHT (direction of card movement)
+addRibbon(peelX, peelZ + P.peelT + 0.3, peelX + P.peelL, peelZ + P.peelT + 0.3, M.labelStrip, P.labelRollW);
 
-// Liner U-turn at peel tip — semi-circular wrap
+// Liner U-turn at RIGHT sharp peel tip — semi-circular wrap
 const lsMat = M.liner.clone();
 {
   const wrapR = 3;
   const wrapSegs = 8;
+  const tipX = peelX + P.peelL + 10;  // right sharp edge X
   for (let w = 0; w < wrapSegs; w++) {
     const a1 = 0 + Math.PI * (w / wrapSegs);
     const a2 = 0 + Math.PI * ((w + 1) / wrapSegs);
-    const x1 = peelX - wrapR + Math.cos(a1) * wrapR;
+    const x1 = tipX + wrapR - Math.cos(a1) * wrapR;
     const z1 = peelZ + 1 + Math.sin(a1) * wrapR;
-    const x2 = peelX - wrapR + Math.cos(a2) * wrapR;
+    const x2 = tipX + wrapR - Math.cos(a2) * wrapR;
     const z2 = peelZ + 1 + Math.sin(a2) * wrapR;
     addRibbon(x1, z1, x2, z2, lsMat, P.labelRollW);
   }
 }
 
-// Liner: peel left edge → DOWN to guide roller
-addRibbon(peelX - 3, peelZ - 1, gr1X, gr1Z, lsMat, P.labelRollW);
-// Liner: guide roller → UP to tension roller
-addRibbon(gr1X, gr1Z, trX, trZ, lsMat, P.labelRollW);
-// Liner: tension roller → UP to take-up spool
+// Liner return: U-turn (RIGHT) → straight UP to tension roller (RIGHT)
+addRibbon(peelX + P.peelL + 13, peelZ - 1, trX, trZ, lsMat, P.labelRollW);
+// Liner: tension roller → UP to take-up spool (RIGHT, above)
 addRibbon(trX, trZ, tsX, tsZ - 18, lsMat, P.labelRollW);
 
 // ═══════════════════════════════════════════════════
 //  STICKER MARKS on the strip path (animated)
+//  Single-segment path: supply roll (LEFT) → peel plate LEFT edge
 // ═══════════════════════════════════════════════════
-const stripAngle = Math.atan2(peelZ + P.peelT + 0.3 - (rollZ - P.labelRollD / 2),
-                              (peelX + P.peelL) - rollX);
+const stripPathLen = Math.sqrt((peelX - rollX) ** 2 + (peelZ + P.peelT + 0.3 - (rollZ - P.labelRollD / 2)) ** 2);
 const stripStickers = [];
-const stripStartX = rollX, stripStartZ = rollZ - P.labelRollD / 2;
-const stripEndX = peelX + P.peelL, stripEndZ = peelZ + P.peelT + 0.3;
 for (let i = 0; i < 5; i++) {
   const sGeo = new THREE.BoxGeometry(stkSize * S, 0.6 * S, stkSize * S);
   const sm = new THREE.Mesh(sGeo, M.sticker);
-  sm.rotation.z = stripAngle;
   labelParts.strips.add(sm);
   stripStickers.push({ mesh: sm, t: i * 0.2 });
 }
@@ -1151,8 +1129,6 @@ const supplyRelX = rollX - lhX0;
 const supplyRelZ = rollZ - lhBaseZ;
 const tsRelX = tsX - lhX0;
 const tsRelZ = tsZ - lhBaseZ;
-const gr1RelX = gr1X - lhX0;
-const gr1RelZ = gr1Z - lhBaseZ;
 const trRelX = trX - lhX0;
 const trRelZ = trZ - lhBaseZ;
 
@@ -1171,10 +1147,6 @@ const trRelZ = trZ - lhBaseZ;
   const h1 = new THREE.Path();
   h1.absarc(tsRelX * S, tsRelZ * S, thHoleDia / 2 * S, 0, Math.PI * 2, true);
   ps.holes.push(h1);
-  // Guide roller hole
-  const h2 = new THREE.Path();
-  h2.absarc(gr1RelX * S, gr1RelZ * S, ghHoleDia / 2 * S, 0, Math.PI * 2, true);
-  ps.holes.push(h2);
   // Tension roller hole
   const h3 = new THREE.Path();
   h3.absarc(trRelX * S, trRelZ * S, ghHoleDia / 2 * S, 0, Math.PI * 2, true);
@@ -1193,11 +1165,9 @@ const trRelZ = trZ - lhBaseZ;
   labelParts.frame.add(farP);
 }
 
-// Bearing seats (only for rollers where bearing is NOT at the panel — take-up, guide, tension)
+// Bearing seats — take-up and tension roller
 addBearingSeat(labelParts.frame, tsX, tsZ, thHoleDia, lhSideY0, P.sideT);
 addBearingSeat(labelParts.frame, tsX, tsZ, thHoleDia, lhSideY1 + postW - P.sideT, P.sideT);
-addBearingSeat(labelParts.frame, gr1X, gr1Z, ghHoleDia, lhSideY0, P.sideT);
-addBearingSeat(labelParts.frame, gr1X, gr1Z, ghHoleDia, lhSideY1 + postW - P.sideT, P.sideT);
 addBearingSeat(labelParts.frame, trX, trZ, ghHoleDia, lhSideY0, P.sideT);
 addBearingSeat(labelParts.frame, trX, trZ, ghHoleDia, lhSideY1 + postW - P.sideT, P.sideT);
 
@@ -1206,83 +1176,78 @@ addBox(motorsGrp, M.motor, tsX - P.nema / 2, -P.nemaD - 8, tsZ - P.nema / 2, P.n
 addCyl(motorsGrp, M.shaft, tsX, -5, tsZ, 5, 14, 'z');
 
 // ═══════════════════════════════════════════════════
-//  HEIGHT ADJUSTMENT MECHANISM — motor-driven on near side, slot on far wall
+//  HEIGHT ADJUSTMENT — screw-based mounting on plastic sub-frame
+//  Plastic bracket with threaded inserts, 4 adjustment bolts (2 per side).
+//  Module C rides up/down on the screws. Minimal design.
 // ═══════════════════════════════════════════════════
 const heightMechGroup = new THREE.Group();
 scene.add(heightMechGroup);
-let leadscrewMesh;
 {
-  const railD = 8;
-  const lsD = 10;
-  const mechYnear = -8;  // near side (motors side)
-  const mechYfar = P.frameW + P.sideT;  // far wall
-  const mechBot = P.legH + P.baseT;
-  const mechTop = lhBaseZ + postH + 25;
-  const mechH = mechTop - mechBot;
-  const mechCZ = (mechBot + mechTop) / 2;
-  const railMat = new THREE.MeshStandardMaterial({ color: 0xccccdd, roughness: 0.12, metalness: 0.85 });
-  const lsMat2 = new THREE.MeshStandardMaterial({ color: 0x707888, roughness: 0.25, metalness: 0.65 });
-  const bracketMat = new THREE.MeshStandardMaterial({ color: 0x555566, roughness: 0.4, metalness: 0.5 });
-  const sliderMat = new THREE.MeshStandardMaterial({ color: 0x444455, roughness: 0.35, metalness: 0.45 });
+  const bracketMat = new THREE.MeshStandardMaterial({ color: 0x2a5a8a, roughness: 0.55, metalness: 0.15 });
+  const screwMat = new THREE.MeshStandardMaterial({ color: 0xbbbbcc, roughness: 0.15, metalness: 0.85 });
+  const nutMat = new THREE.MeshStandardMaterial({ color: 0x999aaa, roughness: 0.2, metalness: 0.75 });
+  const holeMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.8, metalness: 0.1 });
+  const threadMat = new THREE.MeshStandardMaterial({ color: 0xc0c0cc, roughness: 0.15, metalness: 0.85 });
 
-  // ── NEAR SIDE: guide rails + leadscrew + M4 motor ──
-  // Two guide rails (chrome rods)
-  addCyl(heightMechGroup, railMat, lhX0 + 5, mechYnear, mechCZ, railD, mechH);
-  addCyl(heightMechGroup, railMat, lhX1 - 5, mechYnear, mechCZ, railD, mechH);
+  const mechYnear = lhSideY0;
+  const mechYfar = lhSideY1 + postW - P.sideT;
+  const bracketBot = P.legH + P.baseT;
+  const bracketH = 5;
+  const bracketD = 8;
+  const screwD = 4;
+  const screwLen = 50;
+  const screwHeadD = 7;
+  const screwHeadH = 3;
 
-  // Leadscrew (center, threaded rod)
-  leadscrewMesh = addCyl(heightMechGroup, lsMat2, lhCX, mechYnear, mechCZ, lsD, mechH);
+  // ── PLASTIC BRACKETS — thin horizontal bars ──
+  addBox(heightMechGroup, bracketMat, lhX0 - 2, mechYnear - bracketD / 2, bracketBot, lhX1 - lhX0 + 4, bracketD, bracketH);
+  addBox(heightMechGroup, bracketMat, lhX0 - 2, mechYfar - bracketD / 2 + P.sideT, bracketBot, lhX1 - lhX0 + 4, bracketD, bracketH);
+  // Small vertical ears at corners
+  const earH = 12;
+  [[lhX0 - 2, mechYnear - bracketD / 2], [lhX1 - 2, mechYnear - bracketD / 2],
+   [lhX0 - 2, mechYfar - bracketD / 2 + P.sideT], [lhX1 - 2, mechYfar - bracketD / 2 + P.sideT]].forEach(([ex, ey]) => {
+    addBox(heightMechGroup, bracketMat, ex, ey, bracketBot, 4, bracketD, earH);
+  });
 
-  // Thread ridges on leadscrew
-  const threadMat = new THREE.MeshStandardMaterial({ color: 0x8890a5, roughness: 0.2, metalness: 0.7 });
-  for (let tz = mechBot + 5; tz < mechTop - 5; tz += 6) {
-    const tGeo = new THREE.TorusGeometry(lsD / 2 * S + 0.3 * S, 0.6 * S, 4, 20);
-    const tMesh = new THREE.Mesh(tGeo, threadMat);
-    tMesh.position.copy(mm(lhCX, mechYnear, tz));
-    tMesh.rotation.x = Math.PI / 2;
-    heightMechGroup.add(tMesh);
-  }
+  // ── SCREWS with visible threads — using addCyl convention ──
+  const screwXpos = [lhX0, lhX1];
+  const screwYpos = [mechYnear, mechYfar + P.sideT];
+  const screwBaseZ = bracketBot + bracketH;
+  const screwCZ = screwBaseZ + screwLen / 2;
 
-  // M4 height motor — at bottom of leadscrew, near side
-  addBox(heightMechGroup, M.motor, lhCX - P.nema / 2, mechYnear - P.nemaD / 2, mechBot - P.nema - 5, P.nema, P.nemaD, P.nema);
-  addCyl(heightMechGroup, M.shaft, lhCX, mechYnear, mechBot - 3, 5, 10);
-  // Coupling between motor shaft and leadscrew
-  const couplingMat = new THREE.MeshStandardMaterial({ color: 0x3366aa, roughness: 0.3, metalness: 0.5 });
-  addCyl(heightMechGroup, couplingMat, lhCX, mechYnear, mechBot + 2, 14, 10);
+  screwXpos.forEach(sx => {
+    screwYpos.forEach(sy => {
+      // Threaded hole in bracket (dark)
+      addCyl(heightMechGroup, holeMat, sx, sy, bracketBot + bracketH / 2, screwD + 0.5, bracketH + 2);
+      // Main screw shaft
+      addCyl(heightMechGroup, screwMat, sx, sy, screwCZ, screwD, screwLen);
+      // Visible thread ridges — tight spacing for screw look
+      for (let tz = screwBaseZ + 2; tz < screwBaseZ + screwLen - 2; tz += 2.5) {
+        addCyl(heightMechGroup, threadMat, sx, sy, tz, screwD + 1.2, 0.8);
+      }
+      // Hex bolt head on top (6-sided)
+      const headGeo = new THREE.CylinderGeometry(screwHeadD / 2 * S, screwHeadD / 2 * S, screwHeadH * S, 6);
+      const headMesh = new THREE.Mesh(headGeo, screwMat);
+      headMesh.position.copy(mm(sx, sy, screwBaseZ + screwLen + screwHeadH / 2));
+      headMesh.castShadow = true;
+      heightMechGroup.add(headMesh);
+      // Hex locking nut just above bracket
+      const nutGeo = new THREE.CylinderGeometry((screwHeadD - 1) / 2 * S, (screwHeadD - 1) / 2 * S, 2 * S, 6);
+      const nutMesh = new THREE.Mesh(nutGeo, nutMat);
+      nutMesh.position.copy(mm(sx, sy, screwBaseZ + 2));
+      nutMesh.castShadow = true;
+      heightMechGroup.add(nutMesh);
+    });
+  });
 
-  // Bottom mounting plate
-  addBox(heightMechGroup, bracketMat, lhX0 + 1, mechYnear - 4, mechBot - 3, lhX1 - lhX0 - 2, 8, 5);
-  // Top crossbar
-  addBox(heightMechGroup, bracketMat, lhX0 + 1, mechYnear - 3, mechTop - 2, lhX1 - lhX0 - 2, 6, 4);
-
-  // Slider blocks on modC (ride the rails, move with label head)
-  addBox(labelParts.frame, sliderMat, lhX0 + 5 - 5, mechYnear - 5, lhBaseZ + 2, 10, 10, 18);
-  addBox(labelParts.frame, sliderMat, lhX1 - 5 - 5, mechYnear - 5, lhBaseZ + 2, 10, 10, 18);
-  // Leadscrew nut block
-  addBox(labelParts.frame, sliderMat, lhCX - 7, mechYnear - 7, lhBaseZ + 5, 14, 14, 14);
-
-  // ── FAR SIDE: vertical slot in wall ──
-  const slotW = lhX1 - lhX0 - 10;  // slot width (X direction)
-  const slotH = mechH + 20;         // slot height (Z direction), generous for travel
-  const wallT = P.sideT;            // wall thickness
-  const slotMat = new THREE.MeshStandardMaterial({ color: 0x333340, roughness: 0.5, metalness: 0.3 });
-  const slotInnerMat = new THREE.MeshStandardMaterial({ color: 0x1a1a20, roughness: 0.6, metalness: 0.15 });
-
-  // Slot frame (surround) — far wall
-  // Left pillar
-  addBox(heightMechGroup, slotMat, lhX0 + 2, mechYfar - 2, mechBot - 10, 5, wallT + 4, slotH);
-  // Right pillar
-  addBox(heightMechGroup, slotMat, lhX1 - 7, mechYfar - 2, mechBot - 10, 5, wallT + 4, slotH);
-  // Top bar
-  addBox(heightMechGroup, slotMat, lhX0 + 7, mechYfar - 2, mechBot - 10 + slotH - 3, slotW - 4, wallT + 4, 3);
-  // Bottom bar
-  addBox(heightMechGroup, slotMat, lhX0 + 7, mechYfar - 2, mechBot - 10, slotW - 4, wallT + 4, 3);
-  // Dark inner slot recess
-  addBox(heightMechGroup, slotInnerMat, lhX0 + 7, mechYfar, mechBot - 7, slotW - 4, wallT, slotH - 6);
-
-  // Tongue/tab that extends from modC through the slot (moves with label head)
-  const tongMat = new THREE.MeshStandardMaterial({ color: 0x777788, roughness: 0.3, metalness: 0.5 });
-  addBox(labelParts.frame, tongMat, lhCX - 10, mechYfar - 1, lhBaseZ + 10, 20, wallT + 2, 25);
+  // ── Pass-through tabs on modC frame ──
+  const tabMat = new THREE.MeshStandardMaterial({ color: 0x3a6a9a, roughness: 0.5, metalness: 0.2 });
+  screwXpos.forEach(sx => {
+    screwYpos.forEach(sy => {
+      addBox(labelParts.frame, tabMat, sx - 3, sy - 3, lhBaseZ - 1, 6, 6, 3);
+      addCyl(labelParts.frame, holeMat, sx, sy, lhBaseZ, screwD + 1, 3);
+    });
+  });
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1660,6 +1625,7 @@ for (let cp = 0; cp < CARD_POOL_SIZE; cp++) {
   const panelW = 70, panelH = 35;
   const panelGeo = new THREE.PlaneGeometry(panelW * S, panelH * S);
   const logoMesh = new THREE.Mesh(panelGeo, logoMat);
+  logoMesh.name = 'companyLogo';
   // Position: centered on machine length, far side panel (camera is beyond far wall)
   const logoCenterX = P.frameL / 2;
   const logoCenterZ = P.legH + P.baseT + (P.rollerD + 8) / 2;
@@ -1692,7 +1658,6 @@ makeLabel('רולרי הזנה (M1)', mm(exitRollerX, CY, exitRollerTopZ + 10), 
 makeLabel('→→→ M1 מזין | S1 מזהה | M2 מסיע →→→', mm((transStartX + driveX) / 2, CY, beltTopZ - 8), '#555', 0.06);
 makeLabel('פלטת קילוף ◁', mm(peelX + P.peelL / 2, CY, peelZ + 10), '#DAA520', 0.04);
 makeLabel('סליל איסוף לינר ⟳', mm(tsX, CY, tsZ + 25), '#dea860', 0.04);
-makeLabel('גליל הובלה', mm(gr1X, CY, gr1Z + 12), '#6098c8', 0.035);
 makeLabel('גליל מתיחה', mm(trX, CY, trZ + 10), '#cc4422', 0.035);
 makeLabel('גליל מדבקות ⟳', mm(rollX, CY, rollZ + P.labelRollD / 2 + 8), '#f06070', 0.04);
 
@@ -1891,24 +1856,34 @@ function tick() {
     labelRollGroup.rotation.z -= (rollSpd * 0.6) * SIM.speed;
   }
 
-  // Animate strip sticker marks (flow from supply roll to peel plate)
+  // Animate strip sticker marks (flow from supply roll → peel plate, single segment)
+  // Helper: map t (0..1) along path to position + angle
+  function stripPos(t) {
+    const sx1 = rollX, sz1 = rollZ - P.labelRollD / 2;
+    const sx2 = peelX, sz2 = peelZ + P.peelT + 0.3;
+    return {
+      x: sx1 + (sx2 - sx1) * t,
+      z: sz1 + (sz2 - sz1) * t,
+      a: Math.atan2(sz2 - sz1, sx2 - sx1)
+    };
+  }
   if (labelActive) {
     const stripSpd = SIM.m3 ? 0.008 : 0.003;
     stripStickers.forEach(ss => {
       ss.t += stripSpd * SIM.speed;
       if (ss.t > 1) ss.t -= 1;
-      const sx = stripStartX + (stripEndX - stripStartX) * ss.t;
-      const sz = stripStartZ + (stripEndZ - stripStartZ) * ss.t;
-      ss.mesh.position.set(sx * S, sz * S, CY * S);
+      const p = stripPos(ss.t);
+      ss.mesh.position.set(p.x * S, p.z * S, CY * S);
+      ss.mesh.rotation.z = p.a;
       ss.mesh.visible = true;
     });
   } else {
     // Reset to evenly spaced
     stripStickers.forEach((ss, i) => {
       ss.t = i * 0.2;
-      const sx = stripStartX + (stripEndX - stripStartX) * ss.t;
-      const sz = stripStartZ + (stripEndZ - stripStartZ) * ss.t;
-      ss.mesh.position.set(sx * S, sz * S, CY * S);
+      const p = stripPos(ss.t);
+      ss.mesh.position.set(p.x * S, p.z * S, CY * S);
+      ss.mesh.rotation.z = p.a;
       ss.mesh.visible = true;
     });
   }
@@ -2070,6 +2045,9 @@ window.toggleXray = function() {
       }
     });
   });
+  // Hide/show company logo in xray mode
+  const logo = scene.getObjectByName('companyLogo');
+  if (logo) logo.visible = !xray;
 };
 
 // Frame side panel opacity control
@@ -2088,13 +2066,13 @@ window.setLabelFrameOp = function() {
   M.labelFrameSide.needsUpdate = true;
 };
 
-// Label head height adjustment (mm)
+// Label head height adjustment (mm) — manual screw-based
+let labelHeightOffset = 0;  // stored Y offset for modC
 window.setLabelHeight = function() {
   const mmVal = parseInt(document.getElementById('labelHeightR').value);
   document.getElementById('labelHeightVal').textContent = mmVal + ' מ"מ';
-  modC.position.y = mmVal * S;
-  // Rotate leadscrew proportionally to height
-  if (leadscrewMesh) leadscrewMesh.rotation.y = mmVal * 0.5;
+  labelHeightOffset = mmVal * S;
+  modC.position.y = labelHeightOffset;
 };
 
 // ── Explode ──────────────────────────────────────────────
@@ -2579,7 +2557,7 @@ function animate() {
     const t = explodeLevel;
     // Move module groups apart
     const aT = new THREE.Vector3(allOff.A[0]*t, allOff.A[1]*t, allOff.A[2]*t);
-    const cT = new THREE.Vector3(allOff.C[0]*t, allOff.C[1]*t, allOff.C[2]*t);
+    const cT = new THREE.Vector3(allOff.C[0]*t, allOff.C[1]*t + labelHeightOffset, allOff.C[2]*t);
     const dT = new THREE.Vector3(allOff.D[0]*t, allOff.D[1]*t, allOff.D[2]*t);
     const mT = new THREE.Vector3(allOff.motors[0]*t, allOff.motors[1]*t, allOff.motors[2]*t);
     lerp3(modA, aT, 0.08);
@@ -2601,7 +2579,7 @@ function animate() {
     });
   } else if (!ex.A && !ex.B && !ex.C && !ex.D) {
     lerp3(modA, z3, 0.05);
-    lerp3(modC, z3, 0.05);
+    lerp3(modC, new THREE.Vector3(0, labelHeightOffset, 0), 0.05);
     lerp3(modD, z3, 0.05);
     lerp3(motorsGrp, z3, 0.05);
     Object.values(feederParts).forEach(g => lerp3(g, z3, 0.06));
