@@ -95,6 +95,11 @@ h1{color:#00d4ff;font-size:1.15em;margin:0}
   <button class="vb" id="bExD" onclick="toggleMod('D')">🔧 פירוק יציאה</button>
   <hr class="sep">
   <button class="vb" onclick="showInfo()">ℹ️ איך המכונה עובדת?</button>
+  <div style="background:rgba(15,22,42,0.93);padding:6px 10px;border-radius:7px;border:1px solid #1a3a6a">
+    <label style="color:#777;font-size:0.7em;display:block;margin-bottom:3px">⬆⬇ גובה ראש הדבקה (מ"מ)</label>
+    <input type="range" id="labelHeightR" min="-30" max="30" value="0" oninput="setLabelHeight()" style="width:100%;accent-color:#2ecc71">
+    <div style="text-align:center;color:#2ecc71;font-size:0.75em;font-weight:bold" id="labelHeightVal">0 מ"מ</div>
+  </div>
   <button class="vb" style="background:#e94560;color:#fff;border-color:#e94560;font-weight:bold" onclick="startPresentation()">🎬 מצגת למשקיעים</button>
 </div>
 
@@ -279,14 +284,24 @@ renderer.toneMappingExposure = 1.6;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xc0c8d0);
-scene.fog = new THREE.Fog(0xc0c8d0, 18, 50);
+scene.background = new THREE.Color(0xc0c8d0);
 
-const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.01, 100);
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.01, 1000);
 camera.position.set(3.5, 2.6, 2.5);
 const ctrl = new OrbitControls(camera, canvas);
 ctrl.enableDamping = true; ctrl.dampingFactor = 0.08;
 ctrl.target.set(1.9, 0.5, 0.45);
+ctrl.enableZoom = false; // disable built-in zoom, use custom handler
 ctrl.update();
+
+// Custom smooth zoom — normalizes wheel delta for all mice
+let targetZoomDist = camera.position.distanceTo(ctrl.target);
+const MIN_DIST = 0.8, MAX_DIST = 12;
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 1.06 : 0.94; // fixed 6% per tick
+  targetZoomDist = Math.max(MIN_DIST, Math.min(MAX_DIST, targetZoomDist * delta));
+}, { passive: false });
 
 // Lighting — bright and even
 scene.add(new THREE.AmbientLight(0xc8c8d0, 1.4));
@@ -322,7 +337,7 @@ const M = {
   motor: new THREE.MeshStandardMaterial({ color: 0x2a2a2e, roughness: 0.5, metalness: 0.35 }),
   shaft: new THREE.MeshStandardMaterial({ color: 0xdcdcdc, roughness: 0.15, metalness: 0.85 }),
   card:  new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3, metalness: 0.2 }),
-  sticker: new THREE.MeshStandardMaterial({ color: 0xf06070, roughness: 0.4, metalness: 0.1 }),
+  sticker: new THREE.MeshStandardMaterial({ color: 0xff4060, roughness: 0.3, metalness: 0.1, emissive: 0xff2040, emissiveIntensity: 0.35 }),
   labelRoll: new THREE.MeshStandardMaterial({ color: 0xf06070, roughness: 0.5, transparent: true, opacity: 0.7 }),
   peel: new THREE.MeshStandardMaterial({ color: 0xe8c040, roughness: 0.25, metalness: 0.55 }),
   press: new THREE.MeshStandardMaterial({ color: 0x8878d8, roughness: 0.35, metalness: 0.3 }),
@@ -334,7 +349,7 @@ const M = {
   magWall: new THREE.MeshStandardMaterial({ color: 0x1e1e24, roughness: 0.5, metalness: 0.12 }),
   exitSlot: new THREE.MeshStandardMaterial({ color: 0xf5d020, emissive: 0xf1c40f, emissiveIntensity: 0.4, transparent: true, opacity: 0.5 }),
   liner: new THREE.MeshStandardMaterial({ color: 0xdea860, roughness: 0.55, transparent: true, opacity: 0.55 }),
-  labelStrip: new THREE.MeshStandardMaterial({ color: 0x2ca52c, roughness: 0.55, transparent: true, opacity: 0.6 }),
+  labelStrip: new THREE.MeshStandardMaterial({ color: 0x30cc30, roughness: 0.45, transparent: true, opacity: 0.75, emissive: 0x10aa10, emissiveIntensity: 0.15 }),
   rubberRing: new THREE.MeshStandardMaterial({ color: 0xa06020, roughness: 0.9 }),
   // Bearing materials — open ball bearing (chrome + brass cage)
   bearingOuter: new THREE.MeshStandardMaterial({ color: 0xe0e0e8, roughness: 0.06, metalness: 0.96 }),   // polished chrome outer ring
@@ -684,9 +699,9 @@ const guideEndX = driveX - P.rollerD / 2;
 addBox(beltParts.guides, M.wall, guideStartX, guideY0 - P.sideT, beltTopZ + P.beltT, guideEndX - guideStartX, P.sideT, guideH);
 addBox(beltParts.guides, M.wall, guideStartX, guideY1, beltTopZ + P.beltT, guideEndX - guideStartX, P.sideT, guideH);
 
-// ── M2 motor (drives the drive roller) ──────────────────
-addBox(motorsGrp, M.motor, driveX - P.nema / 2, P.frameW + 8, rollerCZ - P.nema / 2, P.nema, P.nemaD, P.nema);
-addCyl(motorsGrp, M.shaft, driveX, P.frameW + 5, rollerCZ, 5, 14, 'z');
+// ── M2 motor (drives the drive roller) — near side ──────────────────
+addBox(motorsGrp, M.motor, driveX - P.nema / 2, -P.nemaD - 8, rollerCZ - P.nema / 2, P.nema, P.nemaD, P.nema);
+addCyl(motorsGrp, M.shaft, driveX, -5, rollerCZ, 5, 14, 'z');
 
 // ══════════════════════════════════════════════════════════
 //  MODULE A — FEEDER (פידר כרטיסים — יושב על קצה הרצועה)
@@ -837,9 +852,9 @@ addCyl(feederParts.housing, cableMat, sickSensorX, sickSensorY - sickW / 2 - 3, 
 // Small mounting bracket
 addBox(feederParts.housing, M.frame, sickSensorX - sickW / 2 - 1, sickSensorY - sickW / 2 - 1, sickSensorZ - 2, sickW + 2, sickW + 2, 2);
 
-// M1 motor — drives feed wheel (same side as M2, M3)
-addBox(feederParts.motor, M.motor, feedCX - P.nema / 2, P.frameW + 8, feedCZ - P.nema / 2, P.nema, P.nemaD, P.nema);
-addCyl(feederParts.motor, M.shaft, feedCX, P.frameW + 5, feedCZ, 5, 14, 'z');
+// M1 motor — drives feed wheel — near side
+addBox(feederParts.motor, M.motor, feedCX - P.nema / 2, -P.nemaD - 8, feedCZ - P.nema / 2, P.nema, P.nemaD, P.nema);
+addCyl(feederParts.motor, M.shaft, feedCX, -5, feedCZ, 5, 14, 'z');
 
 // ══════════════════════════════════════════════════════════
 //  MODULE C — LABEL HEAD (ראש הדבקה)
@@ -918,12 +933,13 @@ const rlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffff
   labelRollGroup.add(rl);
 });
 
-// Stickers on supply roll surface
-const stkSize = 35;
-for (let a = 0; a < 8; a++) {
-  const angle = (a / 8) * Math.PI * 2;
+// Individual stickers on supply roll surface (spaced apart)
+const stkSize = 20;
+const stkGap = 4;  // gap between individual stickers in mm
+for (let a = 0; a < 12; a++) {
+  const angle = (a / 12) * Math.PI * 2;
   const sr = P.labelRollD / 2 + 0.5;
-  const sGeo = new THREE.BoxGeometry(stkSize * S * 0.7, 0.5 * S, stkSize * S);
+  const sGeo = new THREE.BoxGeometry(stkSize * S * 0.6, 0.6 * S, stkSize * S);
   const sm = new THREE.Mesh(sGeo, M.sticker);
   sm.position.set(Math.cos(angle) * sr * S, Math.sin(angle) * sr * S, 0);
   sm.rotation.z = angle + Math.PI / 2;
@@ -1018,7 +1034,7 @@ labelParts.peel.add(new THREE.Mesh(tipGeo, M.peel));
 addBox(labelParts.peel, M.frame, peelX - 4, guideY0 + 8, peelZ - 10, 8, P.cardW - 8, 10);
 
 // Dispensed sticker at peel tip
-const stickerEdgeMat = new THREE.MeshStandardMaterial({ color: 0xf06070, roughness: 0.3, metalness: 0.05, side: THREE.DoubleSide });
+const stickerEdgeMat = new THREE.MeshStandardMaterial({ color: 0xff4060, roughness: 0.3, metalness: 0.05, side: THREE.DoubleSide, emissive: 0xff2040, emissiveIntensity: 0.4 });
 const stickerEdge = new THREE.Mesh(
   new THREE.BoxGeometry(stkSize * S, 0.5 * S, stkSize * S),
   stickerEdgeMat
@@ -1055,9 +1071,31 @@ function addRibbon(x1, z1, x2, z2, mat, width) {
   labelParts.strips.add(mesh); return mesh;
 }
 
-// PATH: Supply roll (right) → DOWN to peel plate
-addRibbon(rollX, rollZ - P.labelRollD / 2, peelX + P.peelL, peelZ + P.peelT + 0.3, M.labelStrip, P.labelRollW);
-// Across peel plate top surface
+// PATH: Supply roll (right) → DOWN to peel plate — appears as continuous solid strip
+// Upper section: individual stickers (separate small marks)
+const stripPath_x1 = rollX, stripPath_z1 = rollZ - P.labelRollD / 2;
+const stripPath_x2 = peelX + P.peelL, stripPath_z2 = peelZ + P.peelT + 0.3;
+// Base liner ribbon (full length, thin)
+addRibbon(stripPath_x1, stripPath_z1, stripPath_x2, stripPath_z2, M.liner, P.labelRollW);
+// Dense sticker marks on the strip — closer to peel plate they merge into solid
+const stripDx = stripPath_x2 - stripPath_x1, stripDz = stripPath_z2 - stripPath_z1;
+const totalStripLen = Math.sqrt(stripDx * stripDx + stripDz * stripDz);
+const stripA = Math.atan2(stripDz, stripDx);
+const numStripStk = 8;
+for (let si = 0; si < numStripStk; si++) {
+  const t = (si + 0.5) / numStripStk;
+  const sLen = t < 0.5 ? stkSize * 0.7 : stkSize * 0.85 + (t - 0.5) * stkSize * 0.3; // grows denser toward peel
+  const sx = stripPath_x1 + stripDx * t;
+  const sz = stripPath_z1 + stripDz * t;
+  const sMat = t > 0.6 ? M.sticker : M.sticker.clone();
+  if (t <= 0.6) { sMat.transparent = true; sMat.opacity = 0.85; }
+  const sGeo = new THREE.BoxGeometry(sLen * S, 0.7 * S, stkSize * S);
+  const sMesh = new THREE.Mesh(sGeo, sMat);
+  sMesh.position.set(sx * S, sz * S, CY * S);
+  sMesh.rotation.z = stripA;
+  labelParts.strips.add(sMesh);
+}
+// Across peel plate top surface — continuous solid strip
 addRibbon(peelX + P.peelL, peelZ + P.peelT + 0.3, peelX, peelZ + P.peelT + 0.3, M.labelStrip, P.labelRollW);
 
 // Liner U-turn at peel tip — semi-circular wrap
@@ -1084,20 +1122,19 @@ addRibbon(gr1X, gr1Z, trX, trZ, lsMat, P.labelRollW);
 addRibbon(trX, trZ, tsX, tsZ - 18, lsMat, P.labelRollW);
 
 // ═══════════════════════════════════════════════════
-//  STICKER MARKS on the strip path
+//  STICKER MARKS on the strip path (animated)
 // ═══════════════════════════════════════════════════
-// Labels approaching peel plate (on the strip from supply to plate)
 const stripAngle = Math.atan2(peelZ + P.peelT + 0.3 - (rollZ - P.labelRollD / 2),
                               (peelX + P.peelL) - rollX);
-for (let i = 0; i < 3; i++) {
-  const t = 0.25 + i * 0.25;
-  const sx = rollX + ((peelX + P.peelL) - rollX) * t;
-  const sz = (rollZ - P.labelRollD / 2) + (peelZ + P.peelT + 0.3 - (rollZ - P.labelRollD / 2)) * t;
+const stripStickers = [];
+const stripStartX = rollX, stripStartZ = rollZ - P.labelRollD / 2;
+const stripEndX = peelX + P.peelL, stripEndZ = peelZ + P.peelT + 0.3;
+for (let i = 0; i < 5; i++) {
   const sGeo = new THREE.BoxGeometry(stkSize * S, 0.6 * S, stkSize * S);
   const sm = new THREE.Mesh(sGeo, M.sticker);
-  sm.position.set(sx * S, sz * S, CY * S);
   sm.rotation.z = stripAngle;
   labelParts.strips.add(sm);
+  stripStickers.push({ mesh: sm, t: i * 0.2 });
 }
 
 // ═══════════════════════════════════════════════════
@@ -1161,9 +1198,89 @@ addBearingSeat(labelParts.frame, gr1X, gr1Z, ghHoleDia, lhSideY1 + postW - P.sid
 addBearingSeat(labelParts.frame, trX, trZ, ghHoleDia, lhSideY0, P.sideT);
 addBearingSeat(labelParts.frame, trX, trZ, ghHoleDia, lhSideY1 + postW - P.sideT, P.sideT);
 
-// M3 motor — drives take-up spool
-addBox(motorsGrp, M.motor, tsX - P.nema / 2, P.frameW + 8, tsZ - P.nema / 2, P.nema, P.nemaD, P.nema);
-addCyl(motorsGrp, M.shaft, tsX, P.frameW + 5, tsZ, 5, 14, 'z');
+// M3 motor — drives take-up spool — near side
+addBox(motorsGrp, M.motor, tsX - P.nema / 2, -P.nemaD - 8, tsZ - P.nema / 2, P.nema, P.nemaD, P.nema);
+addCyl(motorsGrp, M.shaft, tsX, -5, tsZ, 5, 14, 'z');
+
+// ═══════════════════════════════════════════════════
+//  HEIGHT ADJUSTMENT MECHANISM — motor-driven on near side, slot on far wall
+// ═══════════════════════════════════════════════════
+const heightMechGroup = new THREE.Group();
+scene.add(heightMechGroup);
+let leadscrewMesh;
+{
+  const railD = 8;
+  const lsD = 10;
+  const mechYnear = -8;  // near side (motors side)
+  const mechYfar = P.frameW + P.sideT;  // far wall
+  const mechBot = P.legH + P.baseT;
+  const mechTop = lhBaseZ + postH + 25;
+  const mechH = mechTop - mechBot;
+  const mechCZ = (mechBot + mechTop) / 2;
+  const railMat = new THREE.MeshStandardMaterial({ color: 0xccccdd, roughness: 0.12, metalness: 0.85 });
+  const lsMat2 = new THREE.MeshStandardMaterial({ color: 0x707888, roughness: 0.25, metalness: 0.65 });
+  const bracketMat = new THREE.MeshStandardMaterial({ color: 0x555566, roughness: 0.4, metalness: 0.5 });
+  const sliderMat = new THREE.MeshStandardMaterial({ color: 0x444455, roughness: 0.35, metalness: 0.45 });
+
+  // ── NEAR SIDE: guide rails + leadscrew + M4 motor ──
+  // Two guide rails (chrome rods)
+  addCyl(heightMechGroup, railMat, lhX0 + 5, mechYnear, mechCZ, railD, mechH);
+  addCyl(heightMechGroup, railMat, lhX1 - 5, mechYnear, mechCZ, railD, mechH);
+
+  // Leadscrew (center, threaded rod)
+  leadscrewMesh = addCyl(heightMechGroup, lsMat2, lhCX, mechYnear, mechCZ, lsD, mechH);
+
+  // Thread ridges on leadscrew
+  const threadMat = new THREE.MeshStandardMaterial({ color: 0x8890a5, roughness: 0.2, metalness: 0.7 });
+  for (let tz = mechBot + 5; tz < mechTop - 5; tz += 6) {
+    const tGeo = new THREE.TorusGeometry(lsD / 2 * S + 0.3 * S, 0.6 * S, 4, 20);
+    const tMesh = new THREE.Mesh(tGeo, threadMat);
+    tMesh.position.copy(mm(lhCX, mechYnear, tz));
+    tMesh.rotation.x = Math.PI / 2;
+    heightMechGroup.add(tMesh);
+  }
+
+  // M4 height motor — at bottom of leadscrew, near side
+  addBox(heightMechGroup, M.motor, lhCX - P.nema / 2, mechYnear - P.nemaD / 2, mechBot - P.nema - 5, P.nema, P.nemaD, P.nema);
+  addCyl(heightMechGroup, M.shaft, lhCX, mechYnear, mechBot - 3, 5, 10);
+  // Coupling between motor shaft and leadscrew
+  const couplingMat = new THREE.MeshStandardMaterial({ color: 0x3366aa, roughness: 0.3, metalness: 0.5 });
+  addCyl(heightMechGroup, couplingMat, lhCX, mechYnear, mechBot + 2, 14, 10);
+
+  // Bottom mounting plate
+  addBox(heightMechGroup, bracketMat, lhX0 + 1, mechYnear - 4, mechBot - 3, lhX1 - lhX0 - 2, 8, 5);
+  // Top crossbar
+  addBox(heightMechGroup, bracketMat, lhX0 + 1, mechYnear - 3, mechTop - 2, lhX1 - lhX0 - 2, 6, 4);
+
+  // Slider blocks on modC (ride the rails, move with label head)
+  addBox(labelParts.frame, sliderMat, lhX0 + 5 - 5, mechYnear - 5, lhBaseZ + 2, 10, 10, 18);
+  addBox(labelParts.frame, sliderMat, lhX1 - 5 - 5, mechYnear - 5, lhBaseZ + 2, 10, 10, 18);
+  // Leadscrew nut block
+  addBox(labelParts.frame, sliderMat, lhCX - 7, mechYnear - 7, lhBaseZ + 5, 14, 14, 14);
+
+  // ── FAR SIDE: vertical slot in wall ──
+  const slotW = lhX1 - lhX0 - 10;  // slot width (X direction)
+  const slotH = mechH + 20;         // slot height (Z direction), generous for travel
+  const wallT = P.sideT;            // wall thickness
+  const slotMat = new THREE.MeshStandardMaterial({ color: 0x333340, roughness: 0.5, metalness: 0.3 });
+  const slotInnerMat = new THREE.MeshStandardMaterial({ color: 0x1a1a20, roughness: 0.6, metalness: 0.15 });
+
+  // Slot frame (surround) — far wall
+  // Left pillar
+  addBox(heightMechGroup, slotMat, lhX0 + 2, mechYfar - 2, mechBot - 10, 5, wallT + 4, slotH);
+  // Right pillar
+  addBox(heightMechGroup, slotMat, lhX1 - 7, mechYfar - 2, mechBot - 10, 5, wallT + 4, slotH);
+  // Top bar
+  addBox(heightMechGroup, slotMat, lhX0 + 7, mechYfar - 2, mechBot - 10 + slotH - 3, slotW - 4, wallT + 4, 3);
+  // Bottom bar
+  addBox(heightMechGroup, slotMat, lhX0 + 7, mechYfar - 2, mechBot - 10, slotW - 4, wallT + 4, 3);
+  // Dark inner slot recess
+  addBox(heightMechGroup, slotInnerMat, lhX0 + 7, mechYfar, mechBot - 7, slotW - 4, wallT, slotH - 6);
+
+  // Tongue/tab that extends from modC through the slot (moves with label head)
+  const tongMat = new THREE.MeshStandardMaterial({ color: 0x777788, roughness: 0.3, metalness: 0.5 });
+  addBox(labelParts.frame, tongMat, lhCX - 10, mechYfar - 1, lhBaseZ + 10, 20, wallT + 2, 25);
+}
 
 // ══════════════════════════════════════════════════════════
 //  MODULE D — EXIT TRAY + FLAT OUTPUT CONVEYOR
@@ -1376,8 +1493,8 @@ activeCard.add(holoPatch);
 activeCard.visible = false;
 scene.add(activeCard);
 
-// Sticker 35×35mm
-const stickerSize = 35;
+// Sticker 20×20mm
+const stickerSize = 20;
 const stickerGeo = new THREE.BoxGeometry(stickerSize * S, 1.5 * S, stickerSize * S);
 const stickerOnCardMat = new THREE.MeshStandardMaterial({ color: 0xf06070, roughness: 0.3, metalness: 0.05, emissive: 0xf06070, emissiveIntensity: 0.15 });
 const stickerOnCard = new THREE.Mesh(stickerGeo, stickerOnCardMat);
@@ -1557,9 +1674,9 @@ makeLabel('איזור מעבר', mm((transStartX + transEndX) / 2, CY, beltTopZ 
 makeLabel('C — ראש הדבקה', mm(lhCX, CY, lhBaseZ + postH + 10), '#e94560', 0.08);
 makeLabel('D — יציאה', mm(exitX0 + P.exitLen / 2, CY, exitBeltZ + 12), '#2ecc71', 0.08);
 
-makeLabel('M1 פידר', mm(feedCX, P.frameW + P.nemaD / 2 + 8, feedCZ + 28), '#777', 0.05);
-makeLabel('M2 מסוע', mm(driveX, P.frameW + P.nemaD / 2 + 8, rollerCZ + 28), '#777', 0.05);
-makeLabel('M3 מדבקות', mm(tsX, P.frameW + P.nemaD / 2 + 8, tsZ + 28), '#777', 0.05);
+makeLabel('M1 פידר', mm(feedCX, -P.nemaD / 2 - 8, feedCZ + 28), '#777', 0.05);
+makeLabel('M2 מסוע', mm(driveX, -P.nemaD / 2 - 8, rollerCZ + 28), '#777', 0.05);
+makeLabel('M3 מדבקות', mm(tsX, -P.nemaD / 2 - 8, tsZ + 28), '#777', 0.05);
 
 makeLabel('SICK חיישן', mm(sickSensorX, CY + sickW / 2 + 6, sickSensorZ - 4), '#1a3a5c', 0.04);
 makeLabel('S1 מעבר', mm(s1X, guideY0 - 8, exitBeltZ + 16), '#0f0', 0.05);
@@ -1763,10 +1880,34 @@ function tick() {
     a.mesh.position.x = x * S;
     a.mesh.visible = (x >= idlerX - 5 && x <= driveX + 5);
   });
-  // Animate label system
-  if (SIM.m3) {
-    takeupSpoolGroup.rotation.z += 0.06 * SIM.speed;
-    labelRollGroup.rotation.z -= 0.025 * SIM.speed;
+  // Animate label system — roll rotation whenever simulation has cards
+  const labelActive = SIM.cards.length > 0;
+  if (labelActive) {
+    const rollSpd = SIM.m3 ? 0.08 : 0.03; // faster during active labeling
+    takeupSpoolGroup.rotation.z += rollSpd * SIM.speed;
+    labelRollGroup.rotation.z -= (rollSpd * 0.6) * SIM.speed;
+  }
+
+  // Animate strip sticker marks (flow from supply roll to peel plate)
+  if (labelActive) {
+    const stripSpd = SIM.m3 ? 0.008 : 0.003;
+    stripStickers.forEach(ss => {
+      ss.t += stripSpd * SIM.speed;
+      if (ss.t > 1) ss.t -= 1;
+      const sx = stripStartX + (stripEndX - stripStartX) * ss.t;
+      const sz = stripStartZ + (stripEndZ - stripStartZ) * ss.t;
+      ss.mesh.position.set(sx * S, sz * S, CY * S);
+      ss.mesh.visible = true;
+    });
+  } else {
+    // Reset to evenly spaced
+    stripStickers.forEach((ss, i) => {
+      ss.t = i * 0.2;
+      const sx = stripStartX + (stripEndX - stripStartX) * ss.t;
+      const sz = stripStartZ + (stripEndZ - stripStartZ) * ss.t;
+      ss.mesh.position.set(sx * S, sz * S, CY * S);
+      ss.mesh.visible = true;
+    });
   }
 
   // ── Render all pipeline cards ──
@@ -1805,6 +1946,7 @@ function tick() {
     peelStickerMesh.visible = true;
     stickerEdge.visible = false;
     const prog = labelingCard.lblProg;
+    // Smooth ease-in-out with slight overshoot for realism
     const ep = prog < 0.5 ? 2 * prog * prog : 1 - Math.pow(-2 * prog + 2, 2) / 2;
 
     peelStickerMesh.position.set(peelTipX * S, 0, CY * S);
@@ -1815,11 +1957,18 @@ function tick() {
       const dispenseT = ep;
       let yVal;
       if (t <= dispenseT) {
+        // Already dispensed — flat on card surface
         yVal = stkZ * S;
-      } else if (t <= dispenseT + 0.15) {
-        const curveFrac = (t - dispenseT) / 0.15;
-        const c = curveFrac * curveFrac * (3 - 2 * curveFrac);
+      } else if (t <= dispenseT + 0.08) {
+        // Sharp upward curve at peel point (tight radius at blade edge)
+        const curveFrac = (t - dispenseT) / 0.08;
+        const c = curveFrac * curveFrac;
         yVal = stkZ * S + peelH * S * c;
+      } else if (t <= dispenseT + 0.18) {
+        // Smooth transition to strip level
+        const curveFrac = (t - dispenseT - 0.08) / 0.10;
+        const c = 1 - (1 - curveFrac) * (1 - curveFrac);
+        yVal = (stkZ + peelH) * S + (peelTipZ - stkZ - peelH) * S * c;
       } else {
         yVal = peelTipZ * S;
       }
@@ -1894,12 +2043,27 @@ window.setView = function(n) {
 window.toggleXray = function() {
   xray = !xray;
   document.getElementById('bXray').classList.toggle('ac', xray);
+  const coverMats = [M.frame, M.magWall, M.wall, M.frameSide, M.labelFrameSide, M.sensorBody];
   [modA, modB, modC, modD].forEach(mod => {
     mod.traverse(ch => {
       if (ch.isMesh) {
-        if (ch.material === M.frame || ch.material === M.magWall || ch.material === M.wall)
-          ch.material = xray ? M.frameT : M.frame;
-        if (ch.material === M.glass) ch.material.opacity = xray ? 0.05 : 0.15;
+        if (xray) {
+          if (coverMats.includes(ch.material)) {
+            ch.userData._origMat = ch.material;
+            ch.userData._origOpacity = ch.material.opacity;
+            ch.material = M.frameT;
+          }
+          if (ch.material === M.glass) ch.material.opacity = 0.03;
+        } else {
+          if (ch.material === M.frameT && ch.userData._origMat) {
+            ch.material = ch.userData._origMat;
+            ch.material.opacity = ch.userData._origOpacity !== undefined ? ch.userData._origOpacity : 1;
+            ch.material.needsUpdate = true;
+            delete ch.userData._origMat;
+            delete ch.userData._origOpacity;
+          }
+          if (ch.material === M.glass) ch.material.opacity = 0.15;
+        }
       }
     });
   });
@@ -1921,11 +2085,20 @@ window.setLabelFrameOp = function() {
   M.labelFrameSide.needsUpdate = true;
 };
 
+// Label head height adjustment (mm)
+window.setLabelHeight = function() {
+  const mmVal = parseInt(document.getElementById('labelHeightR').value);
+  document.getElementById('labelHeightVal').textContent = mmVal + ' מ"מ';
+  modC.position.y = mmVal * S;
+  // Rotate leadscrew proportionally to height
+  if (leadscrewMesh) leadscrewMesh.rotation.y = mmVal * 0.5;
+};
+
 // ── Explode ──────────────────────────────────────────────
 const feederExp = { housing: [0, 0.4, 0], feedWheel: [0, -0.25, -0.35], sepPad: [0, -0.15, 0.3], cards: [0, 0.25, 0], motor: [0, -0.45, -0.4] };
 const beltExp = { frame: [0, -0.25, 0], rollers: [0, 0.15, -0.3], belt: [0, 0.3, 0], guides: [0, 0.1, 0.25] };
 const labelExp = { frame: [0, 0.5, 0], roll: [0, 0.75, 0], peel: [0, -0.1, -0.25], press: [0, -0.35, 0], strips: [0, 0.25, 0.25] };
-const allOff = { A: [-0.5, 0.25, 0], B: [0, 0, 0], C: [0, 0.7, 0], D: [0.4, 0, 0], motors: [0, -0.4, 0.4] };
+const allOff = { A: [-0.5, 0.25, 0], B: [0, 0, 0], C: [0, 0.7, 0], D: [0.4, 0, 0], motors: [0, 0.4, 0.4] };
 const z3 = new THREE.Vector3();
 
 // ── EXPLODE SLIDER — moves module groups apart (sub-group level, not per-mesh) ──
@@ -2450,6 +2623,12 @@ function animate() {
 
   // Presentation progress bar
   updatePresProgress();
+
+  // Smooth zoom interpolation
+  const dir = camera.position.clone().sub(ctrl.target).normalize();
+  const curDist = camera.position.distanceTo(ctrl.target);
+  const newDist = curDist + (targetZoomDist - curDist) * 0.1;
+  camera.position.copy(ctrl.target).addScaledVector(dir, newDist);
 
   ctrl.update();
   renderer.render(scene, camera);

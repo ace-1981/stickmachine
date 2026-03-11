@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מכונת מדבקות - שלב 5: מודלים להדפסה תלת-ממדית</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:16px}
+h1{text-align:center;color:#00d4ff;margin-bottom:4px;font-size:1.4em}
+.subtitle{text-align:center;color:#888;margin-bottom:20px;font-size:0.85em}
+.tab-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tab-btn{background:#0f3460;color:#ccc;border:none;padding:9px 14px;border-radius:10px;cursor:pointer;font-size:0.85em;font-family:inherit}
+.tab-btn.active{background:#e94560;color:#fff}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.card{background:#16213e;border-radius:14px;padding:16px;border:1px solid #0f3460;margin-bottom:14px}
+.card-title{color:#e94560;font-weight:bold;font-size:1.05em;margin-bottom:10px}
+svg{width:100%;height:auto;display:block}
+table{width:100%;border-collapse:collapse;font-size:0.85em;margin:8px 0}
+th{background:#0f3460;color:#00d4ff;padding:8px;text-align:right;border:1px solid #1a3a6a}
+td{padding:7px 8px;border:1px solid #0f346066;background:#16213e}
+.dim{color:#00d4ff;font-weight:bold}
+.warn{background:#e67e2218;border:1px solid #e67e22;border-radius:10px;padding:12px;margin:12px 0;font-size:0.9em}
+.warn-title{color:#e67e22;font-weight:bold;margin-bottom:4px}
+.info{background:#3498db18;border:1px solid #3498db;border-radius:10px;padding:12px;margin:12px 0;font-size:0.9em}
+.info-title{color:#3498db;font-weight:bold;margin-bottom:4px}
+.success{background:#2ecc7118;border:1px solid #2ecc71;border-radius:10px;padding:12px;margin:12px 0;font-size:0.9em}
+.success-title{color:#2ecc71;font-weight:bold;margin-bottom:4px}
+.tpu{background:#e74c3c15;border:1px solid #e74c3c;color:#e74c3c;padding:2px 8px;border-radius:5px;font-size:0.8em;font-weight:bold}
+.petg{background:#3498db15;border:1px solid #3498db;color:#3498db;padding:2px 8px;border-radius:5px;font-size:0.8em;font-weight:bold}
+.step-box{display:flex;align-items:flex-start;gap:14px;margin:10px 0;padding:12px;background:#0f3460;border-radius:10px}
+.step-num{background:#e94560;color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:1.1em;flex-shrink:0}
+.step-text{flex:1}
+.step-text strong{color:#00d4ff}
+.part-card{background:#0d1b2a;border:1px solid #1a3a6a;border-radius:12px;padding:14px;margin:10px 0;display:flex;gap:14px;align-items:flex-start}
+.part-num{background:#e94560;color:#fff;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:1.2em;flex-shrink:0}
+.part-info{flex:1}
+.part-info h3{color:#00d4ff;margin-bottom:4px;font-size:0.95em}
+.part-info p{color:#aaa;font-size:0.85em;margin:2px 0}
+@media(max-width:600px){body{padding:8px}h1{font-size:1.15em}.tab-btn{padding:7px 10px;font-size:0.8em}.part-card{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<h1>שלב 5: מודלים להדפסה תלת-ממדית</h1>
+<p class="subtitle">15 חלקים ב-OpenSCAD — קובץ פרמטרי אחד</p>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('overview')">סקירה</button>
+  <button class="tab-btn" onclick="showTab('parts')">רשימת חלקים</button>
+  <button class="tab-btn" onclick="showTab('howto')">איך להדפיס</button>
+  <button class="tab-btn" onclick="showTab('layout')">מפת הרכבה</button>
+  <button class="tab-btn" onclick="showTab('settings')">הגדרות הדפסה</button>
+  <button class="tab-btn" onclick="showTab('assembly')">הרכבה</button>
+</div>
+
+<!-- ==================== סקירה ==================== -->
+<div id="tab-overview" class="tab-content active">
+<div class="card">
+  <div class="card-title">קובץ פרמטרי אחד — כל 15 החלקים</div>
+  
+  <div class="info">
+    <div class="info-title">📐 OpenSCAD — מה זה?</div>
+    OpenSCAD היא תוכנה חינמית לעיצוב תלת-ממדי בשיטת "תכנות".<br>
+    במקום לצייר — כותבים קוד שמתאר את הצורות. <strong>לא צריך לדעת לתכנת!</strong><br>
+    פשוט מורידים, פותחים את הקובץ, ומייצאים STL.
+  </div>
+
+  <svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg">
+    <rect width="800" height="380" fill="#0d1b2a" rx="12"/>
+    
+    <text x="400" y="30" text-anchor="middle" fill="#00d4ff" font-size="15" font-weight="bold">מפת המכונה — 4 מודולים + קופסה</text>
+    
+    <!-- Module A: Feeder -->
+    <rect x="30" y="55" width="130" height="200" rx="10" fill="#3498db15" stroke="#3498db" stroke-width="2"/>
+    <text x="95" y="80" text-anchor="middle" fill="#3498db" font-size="13" font-weight="bold">מודול A</text>
+    <text x="95" y="98" text-anchor="middle" fill="#3498db" font-size="11">פידר</text>
+    <text x="95" y="125" text-anchor="middle" fill="#888" font-size="10">חלק 1: בסיס</text>
+    <text x="95" y="145" text-anchor="middle" fill="#888" font-size="10">חלק 2: דפנות</text>
+    <text x="95" y="165" text-anchor="middle" fill="#e74c3c" font-size="10">חלק 3: גלגל (TPU)</text>
+    
+    <!-- Module B: Rail -->
+    <rect x="180" y="55" width="200" height="200" rx="10" fill="#9b59b615" stroke="#9b59b6" stroke-width="2"/>
+    <text x="280" y="80" text-anchor="middle" fill="#9b59b6" font-size="13" font-weight="bold">מודול B</text>
+    <text x="280" y="98" text-anchor="middle" fill="#9b59b6" font-size="11">מסילה</text>
+    <text x="280" y="125" text-anchor="middle" fill="#888" font-size="10">חלק 4: בסיס שמאל</text>
+    <text x="280" y="145" text-anchor="middle" fill="#888" font-size="10">חלק 5: בסיס ימין</text>
+    <text x="280" y="165" text-anchor="middle" fill="#888" font-size="10">חלק 6: מכוונים ×2</text>
+    <text x="280" y="185" text-anchor="middle" fill="#888" font-size="10">חלק 7: בית רולר ×2</text>
+    
+    <!-- Module C: Label -->
+    <rect x="400" y="55" width="170" height="200" rx="10" fill="#e9456015" stroke="#e94560" stroke-width="2"/>
+    <text x="485" y="80" text-anchor="middle" fill="#e94560" font-size="13" font-weight="bold">מודול C</text>
+    <text x="485" y="98" text-anchor="middle" fill="#e94560" font-size="11">ראש הדבקה</text>
+    <text x="485" y="125" text-anchor="middle" fill="#888" font-size="10">חלק 8: מסגרת ×2</text>
+    <text x="485" y="145" text-anchor="middle" fill="#888" font-size="10">חלק 9: ציר גליל</text>
+    <text x="485" y="165" text-anchor="middle" fill="#888" font-size="10">חלק 10: Peel Plate</text>
+    <text x="485" y="185" text-anchor="middle" fill="#888" font-size="10">חלק 11: זרוע לחץ</text>
+    <text x="485" y="205" text-anchor="middle" fill="#888" font-size="10">חלק 12: סליל Liner</text>
+    
+    <!-- Module D: Exit -->
+    <rect x="590" y="55" width="120" height="200" rx="10" fill="#2ecc7115" stroke="#2ecc71" stroke-width="2"/>
+    <text x="650" y="80" text-anchor="middle" fill="#2ecc71" font-size="13" font-weight="bold">מודול D</text>
+    <text x="650" y="98" text-anchor="middle" fill="#2ecc71" font-size="11">יציאה</text>
+    <text x="650" y="125" text-anchor="middle" fill="#888" font-size="10">חלק 13: מגש</text>
+    
+    <!-- Electronics Box -->
+    <rect x="250" y="280" width="300" height="80" rx="10" fill="#f39c1215" stroke="#f39c12" stroke-width="2"/>
+    <text x="400" y="310" text-anchor="middle" fill="#f39c12" font-size="13" font-weight="bold">קופסת אלקטרוניקה</text>
+    <text x="400" y="335" text-anchor="middle" fill="#888" font-size="10">חלק 14: בסיס   |   חלק 15: מכסה</text>
+    
+    <!-- חיבורים -->
+    <line x1="160" y1="155" x2="180" y2="155" stroke="#888" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <line x1="380" y1="155" x2="400" y2="155" stroke="#888" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <line x1="570" y1="155" x2="590" y2="155" stroke="#888" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <line x1="400" y1="255" x2="400" y2="280" stroke="#f39c12" stroke-width="1.5" stroke-dasharray="4,2"/>
+    
+    <!-- סיכום -->
+    <text x="740" y="310" text-anchor="end" fill="#00d4ff" font-size="12" font-weight="bold">סה״כ:</text>
+    <text x="740" y="330" text-anchor="end" fill="#ccc" font-size="11">15 חלקים</text>
+    <text x="740" y="348" text-anchor="end" fill="#3498db" font-size="10">14× PETG</text>
+    <text x="740" y="364" text-anchor="end" fill="#e74c3c" font-size="10">1× TPU</text>
+  </svg>
+
+  <table>
+    <tr><th>נתון</th><th>ערך</th></tr>
+    <tr><td>סה״כ חלקים</td><td class="dim">15</td></tr>
+    <tr><td>חומר עיקרי</td><td><span class="petg">PETG</span> — 14 חלקים</td></tr>
+    <tr><td>חומר גמיש</td><td><span class="tpu">TPU</span> — חלק 3 (גלגל פידר)</td></tr>
+    <tr><td>משקל PETG אומדן</td><td class="dim">~500-700 גרם</td></tr>
+    <tr><td>משקל TPU אומדן</td><td class="dim">~30 גרם</td></tr>
+    <tr><td>מדפסת מינימלית</td><td class="dim">220×220mm bed</td></tr>
+    <tr><td>קובץ מקור</td><td class="dim">sticker_machine_parts.scad</td></tr>
+  </table>
+</div>
+</div>
+
+<!-- ==================== רשימת חלקים ==================== -->
+<div id="tab-parts" class="tab-content">
+<div class="card">
+  <div class="card-title">כל 15 החלקים — פירוט</div>
+
+  <div class="part-card">
+    <div class="part-num">1</div>
+    <div class="part-info">
+      <h3>בסיס פידר — Feeder Base</h3>
+      <p>מחזיק את מנוע M1 (NEMA17) + חור לגלגל גומי + חיבור למסילה</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ~94×62×35mm | כמות: <strong>1</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num">2</div>
+    <div class="part-info">
+      <h3>דפנות מחסנית — Magazine Walls</h3>
+      <p>4 דפנות שמחזיקות את ערמת הכרטיסים. קיר קדמי נמוך (לראות כמות)</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ~94×62×100mm | כמות: <strong>1</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num" style="background:#e74c3c">3</div>
+    <div class="part-info">
+      <h3>גלגל פידר — Feed Wheel ⚠️ TPU!</h3>
+      <p>גלגל גומי שדוחף את הכרטיס התחתון. טקסטורת גריפ. חור D-shaft 5mm</p>
+      <p>חומר: <span class="tpu">TPU 95A</span> | מידות: ⌀20×15mm | כמות: <strong>1</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num">4</div>
+    <div class="part-info">
+      <h3>בסיס מסילה שמאל — Rail Base Left</h3>
+      <p>מחצית שמאלית של המסילה. כוללת דפנות צד, גשרי bearing, חריץ כרטיס</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ~130×63×24mm | כמות: <strong>1</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num">5</div>
+    <div class="part-info">
+      <h3>בסיס מסילה ימין — Rail Base Right</h3>
+      <p>מראה (mirror) של חלק 4. מתחבר עם ברגים M4</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ~130×63×24mm | כמות: <strong>1</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num">6</div>
+    <div class="part-info">
+      <h3>מכוון צד — Rail Side Guide</h3>
+      <p>מכוון מתכוונן שמרכז את הכרטיס במסילה. חריץ (slot) לכוונון</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ~40×15×20mm | כמות: <strong>2</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num">7</div>
+    <div class="part-info">
+      <h3>בית רולר — Roller Housing</h3>
+      <p>מחזיק 2× מיסב 608 + ציר ⌀8mm. עמודים עם press-fit ל-bearing</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ~30×66×25mm | כמות: <strong>2</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num">8</div>
+    <div class="part-info">
+      <h3>מסגרת ראש הדבקה — Label Head Frame</h3>
+      <p>לוח צד בצורת L. מחזיק ציר גליל, ציר רולר לחץ, ציר liner. 2 לוחות (ימין+שמאל)</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ~30×40×150mm | כמות: <strong>2</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num">9</div>
+    <div class="part-info">
+      <h3>ציר מחזיק גליל — Roll Holder Spindle</h3>
+      <p>נכנס ללב הגליל (⌀76mm). פלנגה מונעת החלקה. חלול + חור ציר ⌀8 מרכזי</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ⌀84×61mm | כמות: <strong>1</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num">10</div>
+    <div class="part-info">
+      <h3>Peel Plate — לוח קילוף</h3>
+      <p>לוח דק (1.5mm) עם קצה חד שמקלף את המדבקה מהרצועה. אוזני חיבור</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ~40×60×1.5mm | כמות: <strong>1</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num">11</div>
+    <div class="part-info">
+      <h3>זרוע רולר לחץ — Pressure Roller Arm</h3>
+      <p>זרוע מסתובבת עם bearing 608 בקצה. חור לקפיץ. לוחצת מדבקה על כרטיס</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ~50×15×8mm | כמות: <strong>1</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num">12</div>
+    <div class="part-info">
+      <h3>סליל Liner — Liner Take-up Spool</h3>
+      <p>אוסף את נייר הנושא (אחרי שהמדבקה הוסרה). 2 פלנגות + חריץ תפיסה</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ⌀60×60mm | כמות: <strong>1</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num">13</div>
+    <div class="part-info">
+      <h3>מגש יציאה — Exit Tray</h3>
+      <p>משופע ב-15°. דפנות צד. חריץ לחיישן S3</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ~80×63×20mm | כמות: <strong>1</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num" style="background:#f39c12">14</div>
+    <div class="part-info">
+      <h3>קופסת אלקטרוניקה — בסיס</h3>
+      <p>מכילה Arduino, TMC2209 ×3, LM2596. חורי אוורור, חור USB, חורי כבלים</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ~180×120×60mm | כמות: <strong>1</strong></p>
+    </div>
+  </div>
+
+  <div class="part-card">
+    <div class="part-num" style="background:#f39c12">15</div>
+    <div class="part-info">
+      <h3>קופסת אלקטרוניקה — מכסה</h3>
+      <p>מכסה עם שפה פנימית, חורי אוורור, 4 ברגים</p>
+      <p>חומר: <span class="petg">PETG</span> | מידות: ~180×120×3mm | כמות: <strong>1</strong></p>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ==================== איך להדפיס ==================== -->
+<div id="tab-howto" class="tab-content">
+<div class="card">
+  <div class="card-title">🔧 איך להדפיס — צעד אחרי צעד</div>
+
+  <div class="step-box">
+    <div class="step-num">1</div>
+    <div class="step-text">
+      <strong>התקנת OpenSCAD</strong><br>
+      הורידו בחינם מ: <span style="color:#00d4ff">https://openscad.org/downloads.html</span><br>
+      Windows / Mac / Linux
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">2</div>
+    <div class="step-text">
+      <strong>פתיחת הקובץ</strong><br>
+      File → Open → <span style="color:#00d4ff">sticker_machine_parts.scad</span>
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">3</div>
+    <div class="step-text">
+      <strong>בחירת חלק</strong><br>
+      <strong>אפשרות א׳:</strong> פתח Customizer (<span style="color:#f39c12">Window → Customizer</span>), בחר מספר חלק<br>
+      <strong>אפשרות ב׳:</strong> בשורה הראשונה של הקוד, שנה <span style="color:#f1c40f">part_number = 1</span> למספר הרצוי
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">4</div>
+    <div class="step-text">
+      <strong>תצוגה מקדימה</strong><br>
+      לחץ <span style="color:#2ecc71">F5</span> (Preview) — רואים את החלק מהר<br>
+      <span style="color:#888">(התצוגה לא מדויקת אבל מהירה)</span>
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">5</div>
+    <div class="step-text">
+      <strong>רנדור מלא</strong><br>
+      לחץ <span style="color:#2ecc71">F6</span> (Render) — חישוב מלא. ייקח כמה שניות.
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">6</div>
+    <div class="step-text">
+      <strong>ייצוא STL</strong><br>
+      לחץ <span style="color:#2ecc71">F7</span> (Export STL)<br>
+      שמור בשם: <span style="color:#f39c12">part_01_feeder_base.stl</span> (וכן הלאה)<br>
+      <span style="color:#888">חזור על 3-6 לכל חלק</span>
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">7</div>
+    <div class="step-text">
+      <strong>הדפסה בסלייסר</strong><br>
+      פתח את ה-STL ב-<span style="color:#00d4ff">Cura / PrusaSlicer / OrcaSlicer</span><br>
+      הגדר חומר + הגדרות הדפסה (ראה לשונית "הגדרות")<br>
+      שלח למדפסת
+    </div>
+  </div>
+
+  <div class="info">
+    <div class="info-title">💡 תצוגת הרכבה מלאה</div>
+    כדי לראות את כל החלקים מורכבים ביחד:<br>
+    שנה <span style="color:#f1c40f">show_assembly = true</span> ולחץ F5.<br>
+    <span style="color:#888">(רק לתצוגה — לא לייצוא!)</span>
+  </div>
+</div>
+</div>
+
+<!-- ==================== מפת הרכבה ==================== -->
+<div id="tab-layout" class="tab-content">
+<div class="card">
+  <div class="card-title">🗺️ מפת הרכבה — מבט עליון</div>
+
+  <svg viewBox="0 0 900 500" xmlns="http://www.w3.org/2000/svg">
+    <rect width="900" height="500" fill="#0d1b2a" rx="12"/>
+    <defs>
+      <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#888"/></marker>
+    </defs>
+
+    <text x="450" y="25" text-anchor="middle" fill="#00d4ff" font-size="14" font-weight="bold">מבט עליון — סדר הרכבה</text>
+    <text x="450" y="42" text-anchor="middle" fill="#888" font-size="10">כיוון תנועת הכרטיס →</text>
+
+    <!-- כיוון -->
+    <line x1="120" y1="220" x2="820" y2="220" stroke="#444" stroke-width="1" stroke-dasharray="8,4"/>
+    <line x1="780" y1="220" x2="820" y2="220" stroke="#00d4ff" stroke-width="2" marker-end="url(#arr)"/>
+
+    <!-- Module A: Feeder -->
+    <rect x="30" y="120" width="130" height="200" rx="8" fill="#3498db10" stroke="#3498db" stroke-width="2"/>
+    
+    <!-- חלק 1: בסיס -->
+    <rect x="40" y="180" width="110" height="80" rx="5" fill="#3498db30" stroke="#3498db" stroke-width="1.5"/>
+    <text x="95" y="210" text-anchor="middle" fill="#3498db" font-size="10" font-weight="bold">1: בסיס פידר</text>
+    <text x="95" y="225" text-anchor="middle" fill="#888" font-size="8">NEMA17 mount</text>
+    
+    <!-- חלק 2: מחסנית -->
+    <rect x="50" y="130" width="90" height="45" rx="5" fill="#3498db20" stroke="#3498db" stroke-width="1" stroke-dasharray="3,2"/>
+    <text x="95" y="152" text-anchor="middle" fill="#3498db" font-size="9">2: מחסנית</text>
+    <text x="95" y="165" text-anchor="middle" fill="#888" font-size="8">(מעל בסיס)</text>
+    
+    <!-- חלק 3: גלגל -->
+    <circle cx="95" cy="230" r="12" fill="#e74c3c30" stroke="#e74c3c" stroke-width="1.5"/>
+    <text x="95" y="233" text-anchor="middle" fill="#e74c3c" font-size="7" font-weight="bold">3</text>
+    <text x="95" y="255" text-anchor="middle" fill="#e74c3c" font-size="8">TPU</text>
+    
+    <text x="95" y="135" text-anchor="middle" fill="#3498db" font-size="11" font-weight="bold">A — פידר</text>
+
+    <!-- Module B: Rails -->
+    <rect x="180" y="150" width="300" height="140" rx="8" fill="#9b59b610" stroke="#9b59b6" stroke-width="2"/>
+    
+    <!-- חלק 4: rail left -->
+    <rect x="190" y="175" width="140" height="90" rx="5" fill="#9b59b630" stroke="#9b59b6" stroke-width="1.5"/>
+    <text x="260" y="210" text-anchor="middle" fill="#9b59b6" font-size="10" font-weight="bold">4: מסילה שמאל</text>
+    <text x="260" y="225" text-anchor="middle" fill="#888" font-size="8">130mm</text>
+    
+    <!-- חלק 5: rail right -->
+    <rect x="335" y="175" width="140" height="90" rx="5" fill="#9b59b630" stroke="#9b59b6" stroke-width="1.5"/>
+    <text x="405" y="210" text-anchor="middle" fill="#9b59b6" font-size="10" font-weight="bold">5: מסילה ימין</text>
+    <text x="405" y="225" text-anchor="middle" fill="#888" font-size="8">130mm</text>
+    
+    <!-- חלק 6: guides -->
+    <rect x="220" y="270" width="30" height="10" rx="2" fill="#ff9f4350" stroke="#ff9f43" stroke-width="1"/>
+    <text x="235" y="278" text-anchor="middle" fill="#ff9f43" font-size="6">6</text>
+    <rect x="380" y="270" width="30" height="10" rx="2" fill="#ff9f4350" stroke="#ff9f43" stroke-width="1"/>
+    <text x="395" y="278" text-anchor="middle" fill="#ff9f43" font-size="6">6</text>
+    
+    <!-- חלק 7: roller housings -->
+    <rect x="200" y="165" width="20" height="15" rx="3" fill="#2ecc7150" stroke="#2ecc71" stroke-width="1"/>
+    <text x="210" y="175" text-anchor="middle" fill="#2ecc71" font-size="6">7</text>
+    <rect x="445" y="165" width="20" height="15" rx="3" fill="#2ecc7150" stroke="#2ecc71" stroke-width="1"/>
+    <text x="455" y="175" text-anchor="middle" fill="#2ecc71" font-size="6">7</text>
+    
+    <text x="330" y="165" text-anchor="middle" fill="#9b59b6" font-size="11" font-weight="bold">B — מסילה</text>
+
+    <!-- Module C: Label Head -->
+    <rect x="500" y="80" width="170" height="280" rx="8" fill="#e9456010" stroke="#e94560" stroke-width="2"/>
+    
+    <!-- חלק 8: frames -->
+    <rect x="510" y="90" width="15" height="260" rx="3" fill="#e9456040" stroke="#e94560" stroke-width="1.5"/>
+    <text x="517" y="220" text-anchor="middle" fill="#e94560" font-size="7" writing-mode="tb">8: מסגרת</text>
+    <rect x="645" y="90" width="15" height="260" rx="3" fill="#e9456040" stroke="#e94560" stroke-width="1.5"/>
+    <text x="652" y="220" text-anchor="middle" fill="#e94560" font-size="7" writing-mode="tb">8: מסגרת</text>
+    
+    <!-- חלק 9: roll -->
+    <circle cx="585" cy="160" r="45" fill="#e9456015" stroke="#e94560" stroke-width="1" stroke-dasharray="4,2"/>
+    <circle cx="585" cy="160" r="20" fill="#e9456020" stroke="#e94560" stroke-width="1"/>
+    <text x="585" y="158" text-anchor="middle" fill="#e94560" font-size="9" font-weight="bold">9: גליל</text>
+    <text x="585" y="172" text-anchor="middle" fill="#888" font-size="7">⌀200mm</text>
+    
+    <!-- חלק 10: peel plate -->
+    <rect x="545" y="240" width="45" height="10" rx="2" fill="#f1c40f50" stroke="#f1c40f" stroke-width="1.5"/>
+    <text x="567" y="248" text-anchor="middle" fill="#f1c40f" font-size="7" font-weight="bold">10</text>
+    
+    <!-- חלק 11: pressure arm -->
+    <rect x="555" y="255" width="35" height="8" rx="2" fill="#ff9f4350" stroke="#ff9f43" stroke-width="1"/>
+    <text x="572" y="261" text-anchor="middle" fill="#ff9f43" font-size="6">11</text>
+    
+    <!-- חלק 12: liner spool -->
+    <circle cx="585" cy="310" r="18" fill="#9b59b620" stroke="#9b59b6" stroke-width="1"/>
+    <text x="585" y="313" text-anchor="middle" fill="#9b59b6" font-size="8">12</text>
+    
+    <text x="585" y="103" text-anchor="middle" fill="#e94560" font-size="11" font-weight="bold">C — הדבקה</text>
+
+    <!-- Module D: Exit -->
+    <rect x="690" y="150" width="120" height="140" rx="8" fill="#2ecc7110" stroke="#2ecc71" stroke-width="2"/>
+    <rect x="700" y="175" width="100" height="90" rx="5" fill="#2ecc7130" stroke="#2ecc71" stroke-width="1.5"/>
+    <text x="750" y="215" text-anchor="middle" fill="#2ecc71" font-size="10" font-weight="bold">13: מגש</text>
+    <text x="750" y="230" text-anchor="middle" fill="#888" font-size="8">15° שיפוע</text>
+    <text x="750" y="165" text-anchor="middle" fill="#2ecc71" font-size="11" font-weight="bold">D — יציאה</text>
+
+    <!-- Electronics -->
+    <rect x="250" y="400" width="200" height="80" rx="8" fill="#f39c1210" stroke="#f39c12" stroke-width="2"/>
+    <text x="350" y="430" text-anchor="middle" fill="#f39c12" font-size="11" font-weight="bold">14+15: אלקטרוניקה</text>
+    <text x="350" y="450" text-anchor="middle" fill="#888" font-size="9">180×120×60mm</text>
+    <text x="350" y="465" text-anchor="middle" fill="#888" font-size="8">Arduino + TMC + PSU</text>
+    
+    <line x1="350" y1="290" x2="350" y2="400" stroke="#f39c12" stroke-width="1" stroke-dasharray="4,2"/>
+  </svg>
+</div>
+</div>
+
+<!-- ==================== הגדרות הדפסה ==================== -->
+<div id="tab-settings" class="tab-content">
+<div class="card">
+  <div class="card-title">⚙️ הגדרות הדפסה מומלצות</div>
+
+  <table>
+    <tr><th>פרמטר</th><th><span class="petg">PETG</span> (חלקים 1-2, 4-15)</th><th><span class="tpu">TPU 95A</span> (חלק 3)</th></tr>
+    <tr><td>טמפרטורת נוזל</td><td class="dim">235-245°C</td><td class="dim">220-230°C</td></tr>
+    <tr><td>טמפרטורת מיטה</td><td class="dim">80-85°C</td><td class="dim">50-60°C</td></tr>
+    <tr><td>גובה שכבה</td><td class="dim">0.2mm</td><td class="dim">0.2mm</td></tr>
+    <tr><td>דפנות (walls)</td><td class="dim">3-4</td><td class="dim">3</td></tr>
+    <tr><td>מילוי (infill)</td><td class="dim">30-40%</td><td class="dim">100%</td></tr>
+    <tr><td>דפוס מילוי</td><td class="dim">Grid / Gyroid</td><td class="dim">Lines</td></tr>
+    <tr><td>שכבות עליונות/תחתונות</td><td class="dim">4</td><td class="dim">4</td></tr>
+    <tr><td>מהירות</td><td class="dim">50-60 mm/s</td><td class="dim">25-30 mm/s</td></tr>
+    <tr><td>רטרקציה</td><td class="dim">5mm @ 40mm/s</td><td class="dim">1.5mm @ 20mm/s</td></tr>
+    <tr><td>מאוורר</td><td class="dim">50-70%</td><td class="dim">100%</td></tr>
+    <tr><td>תמיכות</td><td class="dim">לפי הצורך (ראה למטה)</td><td class="dim">לא</td></tr>
+  </table>
+
+  <div class="warn">
+    <div class="warn-title">⚠️ חלקים שצריכים תמיכות (supports)</div>
+    • <strong>חלק 1</strong> (בסיס פידר): חור NEMA17 בקיר — צריך support<br>
+    • <strong>חלק 7</strong> (בית רולר): חורי bearing — הדפס הפוך (bearings למעלה)<br>
+    • <strong>חלק 8</strong> (מסגרת): Boss-ים בולטים — צריך support<br>
+    • <strong>חלק 11</strong> (זרוע לחץ): חור bearing — הדפס שטוח<br>
+    <br>
+    <strong>שאר החלקים — בדרך כלל בלי supports!</strong>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">📊 אומדן זמני הדפסה</div>
+  <table>
+    <tr><th>חלק</th><th>חומר (גרם)</th><th>זמן (שעות)</th><th>הערות</th></tr>
+    <tr><td>1: בסיס פידר</td><td class="dim">~45g</td><td>~3.5h</td><td>supports!</td></tr>
+    <tr><td>2: דפנות מחסנית</td><td class="dim">~55g</td><td>~4h</td><td></td></tr>
+    <tr><td>3: גלגל פידר</td><td class="dim">~30g</td><td>~1.5h</td><td>TPU, 100% infill</td></tr>
+    <tr><td>4+5: מסילה (×2)</td><td class="dim">~80g</td><td>~5h</td><td></td></tr>
+    <tr><td>6: מכוונים (×2)</td><td class="dim">~10g</td><td>~0.5h</td><td>יחד על הפלטה</td></tr>
+    <tr><td>7: בית רולר (×2)</td><td class="dim">~35g</td><td>~2h</td><td></td></tr>
+    <tr><td>8: מסגרת (×2)</td><td class="dim">~60g</td><td>~4h</td><td>supports!</td></tr>
+    <tr><td>9: ציר גליל</td><td class="dim">~40g</td><td>~2.5h</td><td></td></tr>
+    <tr><td>10: Peel Plate</td><td class="dim">~5g</td><td>~0.5h</td><td>דק!</td></tr>
+    <tr><td>11: זרוע לחץ</td><td class="dim">~15g</td><td>~1h</td><td></td></tr>
+    <tr><td>12: סליל Liner</td><td class="dim">~35g</td><td>~2h</td><td></td></tr>
+    <tr><td>13: מגש יציאה</td><td class="dim">~30g</td><td>~2h</td><td></td></tr>
+    <tr><td>14: קופסה בסיס</td><td class="dim">~85g</td><td>~6h</td><td>הכי ארוך</td></tr>
+    <tr><td>15: קופסה מכסה</td><td class="dim">~30g</td><td>~2h</td><td></td></tr>
+    <tr style="background:#0f3460">
+      <td><strong>סה״כ</strong></td>
+      <td class="dim"><strong>~555g PETG + ~30g TPU</strong></td>
+      <td><strong>~36 שעות</strong></td>
+      <td></td>
+    </tr>
+  </table>
+</div>
+</div>
+
+<!-- ==================== הרכבה ==================== -->
+<div id="tab-assembly" class="tab-content">
+<div class="card">
+  <div class="card-title">🔩 סדר הרכבה מומלץ</div>
+
+  <div class="step-box">
+    <div class="step-num">1</div>
+    <div class="step-text">
+      <strong>מודול B — מסילה</strong><br>
+      חבר חלקים 4+5 (מסילה שמאל+ימין) עם 2× בורג M4.<br>
+      הכנס bearings 608 לבתי הרולר (חלק 7).<br>
+      הרכב צירים ⌀8 עם רולרים על הגשרים.<br>
+      חבר מכוונים (חלק 6) — <strong>אל תהדק</strong>, כוון אחרי כן.
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">2</div>
+    <div class="step-text">
+      <strong>מודול A — פידר</strong><br>
+      הרכב NEMA17 (M1) על בסיס פידר (חלק 1) עם 4× בורג M3.<br>
+      הרכב גלגל TPU (חלק 3) על ציר המנוע.<br>
+      חבר דפנות מחסנית (חלק 2) לבסיס.<br>
+      חבר פידר למסילה עם 2× בורג M4.
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">3</div>
+    <div class="step-text">
+      <strong>מודול C — ראש הדבקה</strong><br>
+      הרכב 2× מסגרת (חלק 8) על המסילה.<br>
+      הכנס ציר ⌀8 + ציר גליל (חלק 9) ← גליל מדבקות.<br>
+      הרכב Peel Plate (חלק 10) בזווית.<br>
+      הרכב זרוע לחץ (חלק 11) + bearing 608 + קפיץ.<br>
+      הרכב סליל Liner (חלק 12) ← חבר קצה רצועה.
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">4</div>
+    <div class="step-text">
+      <strong>מודול D — יציאה</strong><br>
+      חבר מגש (חלק 13) לקצה המסילה עם 2× בורג M4.<br>
+      הכנס חיישן S3 לחריץ.
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">5</div>
+    <div class="step-text">
+      <strong>חיישנים</strong><br>
+      חיישן S1 → חריץ בבסיס פידר.<br>
+      חיישן S2 → באזור ההדבקה (לפני Peel Plate).<br>
+      חיישן S3 → חריץ במגש יציאה.<br>
+      3 חוטים כל אחד → Terminal Block בקופסה.
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">6</div>
+    <div class="step-text">
+      <strong>מנועים</strong><br>
+      M1 כבר מורכב (שלב 2).<br>
+      M2 → חבר לרולר ההובלה (belt או coupling ישיר).<br>
+      M3 → חבר לרולר המדבקה.<br>
+      4 חוטים כל אחד → Terminal Block בקופסה.
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-num">7</div>
+    <div class="step-text">
+      <strong>אלקטרוניקה</strong><br>
+      הרכב Arduino + TMC2209 ×3 + LM2596 בקופסה (חלקים 14+15).<br>
+      חבר חוטים לפי סכמת החשמל (שלב 3).<br>
+      חבר ספק 24V.<br>
+      סגור מכסה.
+    </div>
+  </div>
+
+  <div class="success">
+    <div class="success-title">✅ חומרי חיבור נדרשים</div>
+    • בורג M3×8 — 12 יחידות (NEMA17, דרייברים, מחסנית)<br>
+    • בורג M3×12 — 8 יחידות (מכסה, מכוונים)<br>
+    • בורג M4×12 — 8 יחידות (חיבור מודולים)<br>
+    • בורג M4×16 — 4 יחידות (מסילה)<br>
+    • Insert M3 — 12 יחידות (מוכנסים בחום)<br>
+    • Insert M4 — 8 יחידות<br>
+    • Bearing 608 — 6 יחידות<br>
+    • ציר ⌀8×70mm — 4 יחידות<br>
+    • קפיץ — 1 יחידה (זרוע לחץ)
+  </div>
+</div>
+</div>
+
+<script>
+function showTab(name){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>
